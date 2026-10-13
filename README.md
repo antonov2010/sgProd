@@ -149,17 +149,16 @@ ruff check .      # debe decir: All checks passed!
 ## 6. Día a día
 
 ```powershell
-# Al empezar (Windows: primero abre Docker Desktop)
+# Al empezar (Windows: primero abre Docker Desktop; PostgreSQL arranca solo)
 .\.venv\Scripts\Activate.ps1
 git checkout dev; git pull
-docker compose -f postgresql/docker-compose.yml up -d
 python manage.py migrate          # por si alguien subió migraciones nuevas
 python manage.py runserver
 
-# Al terminar
-# Ctrl+C para detener el servidor
-docker compose -f postgresql/docker-compose.yml stop
+# Al terminar: Ctrl+C para detener el servidor
 ```
+
+> No hace falta levantar PostgreSQL cada día: el compose usa `restart: unless-stopped`, así que `pgsql` y `pgadmin` arrancan solos al abrir Docker Desktop. Solo vuelven a requerir `docker compose up -d` si los detuviste con `docker compose stop`.
 
 ### Flujo de trabajo con git
 
