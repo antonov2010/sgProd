@@ -202,7 +202,7 @@ En la ventana de incógnito, con `jefe-linea-3`:
 
    y abre `http://127.0.0.1:8000/admin/personal/estacion/<id>/change/`.
 
-   **Esperado:** el Admin regresa a `/admin/` con *"Estación con el ID … no
+   **Esperado:** el Admin regresa a `/admin/` con *"Estacion con el ID … no
    existe. ¿Quizás fue eliminado?"*.
 4. Abre **Personal → Habilidades** (la matriz de habilidades).
    **Esperado:** solo aparecen habilidades de empleados y estaciones de
@@ -283,3 +283,44 @@ pueden leer directamente `Empleado.linea` y `Linea.jefe_linea`.
 Con esa relación, la lista de empleados, las estaciones y la matriz de
 habilidades quedan acotadas a la línea del jefe. La asignación de líneas del
 escenario demo corresponde a la historia de seed de Karen.
+
+---
+
+## 8. Verificación de la corrección US-06 en la UI
+
+La corrección agrega `Empleado.linea` y `Linea.jefe_linea`. Para probarla en
+una base local:
+
+```bash
+python manage.py migrate
+python manage.py runserver
+```
+
+Antes de entrar al Admin, cada empleado debe tener su `linea` y cada línea su
+`jefe_linea`. La carga automática del seed la está trabajando Karen; mientras
+tanto, asígnalas desde *Personal → Empleados* y *Personal → Líneas* (o pide
+los datos de prueba al equipo).
+
+Con esas asignaciones, entra a `/admin/` y compara estas pantallas:
+
+| Pantalla | Superusuario | Jefe de Línea 3 | Jefe de Línea 4 |
+| :-- | :-- | :-- | :-- |
+| Empleados (`/admin/personal/empleado/`) | 200 | 40, solo Línea 3 | 40, solo Línea 4 |
+| Estaciones (`/admin/personal/estacion/`) | 40 | 8, solo Línea 3 | 8, solo Línea 4 |
+| Líneas (`/admin/personal/linea/`) | 5 | 1, Línea 3 con Rocío Salas | 1, Línea 4 con Mariana Ortiz |
+| Habilidades (`/admin/personal/skillmatrix/`) | 263 | 50, solo Línea 3 | 56, solo Línea 4 |
+
+Además:
+
+- El Jefe de Línea **no** debe ver el filtro **Por línea** en Estaciones ni en
+  Habilidades; el superusuario sí lo ve con las cinco líneas.
+- El Jefe de Línea solo ve personal activo; un empleado dado de baja no aparece
+  ni por URL directa.
+- La app de planta (`/personal/login/`) sigue funcionando con número + PIN:
+  `SG-0002` / `123456` entra al tablero de Jefe de Línea. La matriz se consulta
+  en el Admin.
+
+> Los conteos salen de la base demo de 200 empleados con las líneas ya
+> asignadas (40/40/40/40/39 empleados por línea). Si tu base viene del seed
+> anterior, los empleados no tienen `linea` y el jefe verá listas vacías hasta
+> que se asignen.

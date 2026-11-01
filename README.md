@@ -261,7 +261,9 @@ planta.
 
 El paso a paso para verificar la historia (pruebas automáticas, usuarios de
 prueba y los criterios de aceptación) está en la
-[guía para probar US-05](docs/02_guia_pruebas_us05.md).
+[guía para probar US-05](docs/02_guia_pruebas_us05.md). La verificación de la
+corrección US-06 en la UI, con los conteos esperados por línea, está en la
+[§8 de esa misma guía](docs/02_guia_pruebas_us05.md).
 
 ---
 
