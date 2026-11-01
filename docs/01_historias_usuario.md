@@ -286,6 +286,7 @@ Entonces el nivel se distingue visualmente de los otros tres
 **Notas · Asana**
 Rama: `feat/rf-1-2-consulta-matriz` · **Dueña: Mariana** · Apoyo: Martha (legibilidad y color) · QA: Karen
 Los 4 niveles: Principiante, Autónomo, Experto, Instructor.
+**Corrección de modelo (rama `feat/us06-correccion`):** `Empleado.linea` y `Linea.jefe_linea`; migración `personal.0003`. El Admin ya acota empleados, estaciones y matriz a la línea del jefe. La asignación de líneas del seed queda en la historia de Karen.
 **Punto de control de S2:** si al día 4 esta historia no está cerrada, US-07 se transfiere a Carlos Eduardo.
 
 ---
