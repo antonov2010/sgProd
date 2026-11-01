@@ -2,7 +2,6 @@
 # Create your models here.
 from django.db import models
 
-
 class NivelHabilidad(models.TextChoices):
     PRINCIPIANTE = 'Principiante', 'Principiante'
     AUTONOMO = 'Autónomo', 'Autónomo'
@@ -22,22 +21,37 @@ class Rol(models.Model):
         return f"{self.nombre} ({self.tipo_rol})"
 
 
+class Linea(models.Model):
+    nombre = models.CharField(max_length=50)
+    # Relación del Jefe de Línea apuntando al modelo Empleado
+    jefe_linea = models.ForeignKey(
+        'Empleado', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='lineas_a_cargo'
+    )
+
+    def __str__(self):
+        return self.nombre
+
+
 class Empleado(models.Model):
     numero_empleado = models.CharField(max_length=20, unique=True)
     nombre = models.CharField(max_length=100)
     pin = models.CharField(max_length=6, blank=True, null=True)
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT, related_name='empleados', null=True, blank=True)
     activo = models.BooleanField(default=True)
+    linea = models.ForeignKey(
+        Linea, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='empleados'
+    )
 
     def __str__(self):
         return f"{self.numero_empleado} - {self.nombre}"
-
-
-class Linea(models.Model):
-    nombre = models.CharField(max_length=50)
-
-    def __str__(self):
-        return self.nombre
 
 
 class Estacion(models.Model):
