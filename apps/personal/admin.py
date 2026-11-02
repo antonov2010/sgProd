@@ -1,6 +1,8 @@
-"""Admin de personal (US-05, RF-1.1).
+"""Admin de personal (US-05, US-06, RF-1.1/RF-1.2).
 
-Empleados y estaciones se consultan y administran desde el Admin de Django.
+Empleados, estaciones y la matriz de habilidades se consultan y administran
+desde el Admin de Django. El Jefe de Línea solo ve la información de la línea
+que tiene asignada.
 """
 
 from django.contrib import admin
@@ -11,10 +13,9 @@ from .models import Empleado, Estacion, Linea, Rol, SkillMatrix
 def lineas_del_usuario(user):
     """Líneas asignadas al Jefe de Línea.
 
-    US-05 no modifica el modelo, así que la línea asignada se representa con
-    los grupos de Django: el grupo del jefe se llama igual que su línea
-    (`Línea 3`, `Línea 4`, ...). Un usuario sin grupo de línea no ve líneas
-    ni estaciones; el superusuario ve todas.
+    La línea del jefe se representa con un grupo de Django que se llama igual
+    que su línea (`Línea 3`, `Línea 4`, ...). Un usuario sin grupo de línea no
+    ve datos de planta; el superusuario ve todas.
     """
     if not user.is_authenticated:
         return Linea.objects.none()
@@ -23,18 +24,31 @@ def lineas_del_usuario(user):
 
 @admin.register(Empleado)
 class EmpleadoAdmin(admin.ModelAdmin):
-    """Consulta de empleados: número, nombre y estado."""
+    """Consulta de empleados: número, nombre, línea y estado."""
 
-    list_display = ("numero_empleado", "nombre", "activo", "rol")
-    list_filter = ("activo", "rol")
-    search_fields = ("numero_empleado", "nombre")
+    list_display = ("numero_empleado", "nombre", "linea", "activo", "rol")
+    list_filter = ("activo", "rol", "linea")
+    search_fields = ("numero_empleado", "nombre", "linea__nombre")
+    list_select_related = ("linea", "rol")
+
+    def get_list_filter(self, request):
+        """El filtro por línea no se le ofrece a quien solo ve una línea."""
+        if request.user.is_superuser:
+            return ("activo", "rol", "linea")
+        return ("activo", "rol")
 
     def get_queryset(self, request):
-        """Un empleado dado de baja no aparece como disponible."""
+        """Un empleado dado de baja no aparece como disponible.
+
+        Además, el Jefe de Línea solo ve al personal de su propia línea.
+        """
         qs = super().get_queryset(request)
         if request.user.is_superuser:
             return qs
-        return qs.filter(activo=True)
+        return qs.filter(
+            activo=True,
+            linea__in=lineas_del_usuario(request.user),
+        )
 
 
 @admin.register(Estacion)
@@ -43,6 +57,7 @@ class EstacionAdmin(admin.ModelAdmin):
 
     list_display = ("nombre", "linea", "orden")
     search_fields = ("nombre",)
+    list_select_related = ("linea",)
 
     def get_list_filter(self, request):
         """El filtro por línea no se le ofrece al Jefe de Línea.
@@ -64,10 +79,11 @@ class EstacionAdmin(admin.ModelAdmin):
 
 @admin.register(Linea)
 class LineaAdmin(admin.ModelAdmin):
-    """Consulta de las líneas de producción."""
+    """Consulta de las líneas de producción y su Jefe de Línea."""
 
-    list_display = ("nombre",)
-    search_fields = ("nombre",)
+    list_display = ("nombre", "jefe_linea")
+    search_fields = ("nombre", "jefe_linea__numero_empleado", "jefe_linea__nombre")
+    list_select_related = ("jefe_linea",)
 
     def get_queryset(self, request):
         """El Jefe de Línea solo ve su propia línea."""
@@ -77,5 +93,36 @@ class LineaAdmin(admin.ModelAdmin):
         return qs.filter(pk__in=lineas_del_usuario(request.user))
 
 
+@admin.register(SkillMatrix)
+class SkillMatrixAdmin(admin.ModelAdmin):
+    """Matriz de habilidades, acotada a la línea del Jefe de Línea."""
+
+    list_display = ("empleado", "estacion", "nivel")
+    list_filter = ("nivel", "estacion__linea")
+    search_fields = (
+        "empleado__numero_empleado",
+        "empleado__nombre",
+        "estacion__nombre",
+    )
+    list_select_related = ("empleado", "estacion", "estacion__linea")
+
+    def get_list_filter(self, request):
+        """No se expone el filtro por línea al Jefe de Línea."""
+        if request.user.is_superuser:
+            return ("nivel", "estacion__linea")
+        return ("nivel",)
+
+    def get_queryset(self, request):
+        """El Jefe de Línea solo ve habilidades de empleados y estaciones suyas."""
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+
+        lineas = lineas_del_usuario(request.user)
+        return qs.filter(
+            empleado__linea__in=lineas,
+            estacion__linea__in=lineas,
+        )
+
+
 admin.site.register(Rol)
-admin.site.register(SkillMatrix)

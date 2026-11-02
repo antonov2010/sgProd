@@ -6,7 +6,7 @@ Este README sirve para tener tu ambiente local listo en unos 20 minutos. Si algo
 
 - [Guía del ambiente de desarrollo](docs/00_guia_ambiente_desarrollo.md): paso a paso, checklist y solución de problemas (§14).
 - [Alcance del proyecto](docs/01_alcance_del_proyecto.md).
-- [Guía para probar US-05](docs/02_guia_pruebas_us05.md): pruebas automáticas y verificación manual de empleados y estaciones.
+- [Guía para probar US-05](docs/02_guia_pruebas_us05.md): pruebas automáticas y verificación manual de empleados, estaciones y la relación Jefe de Línea ↔ Línea.
 
 ---
 
@@ -230,22 +230,40 @@ El Admin de Django es la pantalla de consulta y administración de empleados y
 estaciones (RF-1.1). Un superusuario ve todas las líneas y estaciones, y la
 lista completa de empleados con su estado.
 
-Para el **Jefe de Línea**, la línea asignada se representa con un **grupo de
-Django cuyo nombre coincide exactamente con el de la línea** (`Línea 3`,
-`Línea 4`, …). US-05 no modifica el modelo, así que no hay migración de por
-medio. En el Admin:
+Desde la corrección de US-06 el modelo ya tiene la relación que faltaba:
+
+- `Empleado.linea`: línea a la que pertenece el empleado.
+- `Linea.jefe_linea`: Jefe de Línea responsable de esa línea.
+
+Aplica la migración:
+
+```bash
+python manage.py migrate
+```
+
+La asignación de líneas del escenario demo queda a cargo de la historia de
+seed (Karen). Mientras tanto, puedes asignar `Empleado.linea` y
+`Linea.jefe_linea` desde el Admin.
+
+Para que un **Jefe de Línea** vea únicamente su línea en el Admin:
 
 1. Crea el usuario del jefe y marca **Staff status**; otórgale los permisos de
-   consulta de empleados, estaciones y líneas.
-2. Asígnalo al grupo de su línea en *Authentication and Authorization → Groups*.
+   consulta de empleados, estaciones, líneas y habilidades.
+2. Asígnalo al grupo de su línea en *Authentication and Authorization → Groups*
+   (`Línea 3`, `Línea 4`, …).
+3. En *Personal → Empleados*, verifica que el personal tenga su **Línea**
+   asignada; en *Personal → Líneas*, que la línea tenga a su
+   **Jefe de línea**.
 
-Con eso, el jefe solo ve las estaciones y líneas de su grupo, y en la lista de
-empleados no le aparecen los dados de baja. Un usuario sin grupo de línea no ve
-líneas ni estaciones.
+Con eso, el jefe solo ve al personal activo, las estaciones, su línea y la
+matriz de habilidades de su línea. Un usuario sin grupo de línea no ve datos de
+planta.
 
 El paso a paso para verificar la historia (pruebas automáticas, usuarios de
-prueba y los tres criterios de aceptación) está en la
-[guía para probar US-05](docs/02_guia_pruebas_us05.md).
+prueba y los criterios de aceptación) está en la
+[guía para probar US-05](docs/02_guia_pruebas_us05.md). La verificación de la
+corrección US-06 en la UI, con los conteos esperados por línea, está en la
+[§8 de esa misma guía](docs/02_guia_pruebas_us05.md).
 
 ---
 
