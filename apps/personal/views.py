@@ -1,8 +1,14 @@
+import json
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt  # O maneja el token CSRF mediante JS (recomendado)
+from django.views.decorators.http import require_POST
 
 from .forms import LoginForm
-from .models import Empleado, Estacion, SkillMatrix, Linea  # <--- Agregamos estos 3
+from .models import Empleado, Estacion, Linea, SkillMatrix  # <--- Modelos correctos
+
+NIVELES_PERMITIDOS = ['Principiante', 'Autónomo', 'Experto', 'Instructor']
 
 
 def login_empleado(request):
@@ -28,7 +34,7 @@ def login_empleado(request):
                 elif empleado.pin == pin_ingresado:
                     request.session["empleado_id"] = empleado.id
                     request.session["empleado_nombre"] = empleado.nombre
-                    request.session["numero_empleado"] = empleado.numero_empleado  # <- AGREGA ESTA LÍNEA
+                    request.session["numero_empleado"] = empleado.numero_empleado
                     tipo_rol = (
                         empleado.rol.tipo_rol.lower() if empleado.rol else "operador"
                     )
@@ -53,6 +59,7 @@ def logout_empleado(request):
     """
     request.session.flush()
     return redirect("personal:login")
+
 
 def matriz_competencias(request):
     # 1. Obtener la sesión del jefe
@@ -106,3 +113,42 @@ def matriz_competencias(request):
         "matriz": matriz,
     })
 
+
+@require_POST
+def actualizar_nivel_matriz(request):
+    try:
+        data = json.loads(request.body)
+        empleado_id = data.get('empleado_id')
+        estacion_id = data.get('estacion_id')
+        nuevo_nivel = data.get('nivel')
+
+        # Criterio 3: Validación estricta de niveles
+        if nuevo_nivel not in NIVELES_PERMITIDOS and nuevo_nivel != 'Sin nivel':
+            return JsonResponse({
+                'success': False, 
+                'error': f'Nivel no válido. Debe ser uno de: {", ".join(NIVELES_PERMITIDOS)}'
+            }, status=400)
+
+        # Criterio 2: Persistencia en Base de Datos usando SkillMatrix
+        empleado = Empleado.objects.get(id=empleado_id)
+        estacion = Estacion.objects.get(id=estacion_id)
+
+        if nuevo_nivel == 'Sin nivel':
+            # Si se selecciona "Sin nivel", eliminamos el registro para mantener la BD limpia
+            SkillMatrix.objects.filter(empleado=empleado, estacion=estacion).delete()
+        else:
+            # Actualiza si existe, crea si no existe
+            SkillMatrix.objects.update_or_create(
+                empleado=empleado,
+                estacion=estacion,
+                defaults={'nivel': nuevo_nivel}
+            )
+
+        return JsonResponse({'success': True, 'nivel': nuevo_nivel})
+
+    except Empleado.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Empleado no encontrado'}, status=444)
+    except Estacion.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Estación no encontrada'}, status=444)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

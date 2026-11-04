@@ -12,6 +12,14 @@
 
 {% block content %}
 <style>
+    /* Liberar el contenedor padre de base.html para usar el 100% real del ancho de pantalla */
+    main, .container, .container-fluid, .content-wrapper {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
     /* Ajustes para aprovechamiento de ancho completo */
     .matriz-container {
         padding: 1rem 0;
@@ -27,12 +35,12 @@
     }
     .matriz-table-wrapper {
         width: 100%;
-        overflow-x: auto; /* Permite scroll horizontal fluido */
+        overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
     .matriz-table {
         width: 100%;
-        min-width: 1000px; /* Asegura un ancho mínimo para que no se aprieten las columnas */
+        min-width: 1000px;
         border-collapse: separate;
         border-spacing: 0;
         font-size: 0.875rem;
@@ -86,15 +94,18 @@
         background-color: #f1f5f9;
     }
 
-    /* Badges ajustados */
-    .sg-badge-nivel {
+    /* Selectores con estilo de Badge para edición */
+    .sg-select-nivel {
         display: inline-block;
-        padding: 4px 10px;
+        padding: 4px 8px;
         font-size: 0.78rem;
         font-weight: 600;
         border-radius: 16px;
         text-align: center;
         white-space: nowrap;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
     }
     .sg-badge-instructor {
         background-color: #fef3c7;
@@ -131,7 +142,7 @@
         <div>
             <p class="sg-eyebrow">Jefatura de Línea · Personal</p>
             <h1>Matriz de Competencias — {{ linea.nombre|default:"Sin Línea Asignada" }}</h1>
-            <p class="sg-muted">Consulta de niveles de habilidad por operador y estación de trabajo.</p>
+            <p class="sg-muted">Consulta y edición de niveles de habilidad por operador y estación de trabajo.</p>
         </div>
         <a href="{% url 'dashboard:pantalla_jefe' %}" style="background-color: #f1f5f9; color: #0d5c75; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
             ← Volver al Tablero
@@ -166,27 +177,16 @@
                                 
                                 {% for celda in fila.niveles %}
                                     <td>
-                                        {% if celda.nivel == 'Instructor' %}
-                                            <span class="sg-badge-nivel sg-badge-instructor">
-                                                ⭐ Instructor
-                                            </span>
-                                        {% elif celda.nivel == 'Experto' %}
-                                            <span class="sg-badge-nivel sg-badge-experto">
-                                                Experto
-                                            </span>
-                                        {% elif celda.nivel == 'Autónomo' %}
-                                            <span class="sg-badge-nivel sg-badge-autonomo">
-                                                Autónomo
-                                            </span>
-                                        {% elif celda.nivel == 'Principiante' %}
-                                            <span class="sg-badge-nivel sg-badge-principiante">
-                                                Principiante
-                                            </span>
-                                        {% else %}
-                                            <span class="sg-badge-nivel sg-badge-sinnivel">
-                                                Sin nivel
-                                            </span>
-                                        {% endif %}
+                                        <select class="sg-select-nivel {% if celda.nivel == 'Instructor' %}sg-badge-instructor{% elif celda.nivel == 'Experto' %}sg-badge-experto{% elif celda.nivel == 'Autónomo' %}sg-badge-autonomo{% elif celda.nivel == 'Principiante' %}sg-badge-principiante{% else %}sg-badge-sinnivel{% endif %}"
+                                                data-empleado-id="{{ fila.empleado.id }}"
+                                                data-estacion-id="{{ celda.estacion.id|default:celda.estacion_id }}"
+                                                onchange="actualizarNivel(this)">
+                                            <option value="Sin nivel" {% if celda.nivel == 'Sin nivel' or not celda.nivel %}selected{% endif %}>Sin nivel</option>
+                                            <option value="Principiante" {% if celda.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
+                                            <option value="Autónomo" {% if celda.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
+                                            <option value="Experto" {% if celda.nivel == 'Experto' %}selected{% endif %}>Experto</option>
+                                            <option value="Instructor" {% if celda.nivel == 'Instructor' %}selected{% endif %}>⭐ Instructor</option>
+                                        </select>
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -203,4 +203,47 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+function actualizarNivel(selectElement) {
+    const empleadoId = selectElement.getAttribute('data-empleado-id');
+    const estacionId = selectElement.getAttribute('data-estacion-id');
+    const nuevoNivel = selectElement.value;
+    const nivelAnteriorClass = selectElement.className;
+
+    // Actualizar clase de estilo de inmediato
+    selectElement.className = 'sg-select-nivel ';
+    if (nuevoNivel === 'Instructor') selectElement.classList.add('sg-badge-instructor');
+    else if (nuevoNivel === 'Experto') selectElement.classList.add('sg-badge-experto');
+    else if (nuevoNivel === 'Autónomo') selectElement.classList.add('sg-badge-autonomo');
+    else if (nuevoNivel === 'Principiante') selectElement.classList.add('sg-badge-principiante');
+    else selectElement.classList.add('sg-badge-sinnivel');
+
+    // Enviar cambio al backend
+    fetch("{% url 'personal:actualizar_nivel_matriz' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            empleado_id: empleadoId,
+            estacion_id: estacionId,
+            nivel: nuevoNivel
+        })
+    })
+    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(res => {
+        if (!res.body.success) {
+            alert("Error del sistema: " + (res.body.error || "No se pudo actualizar el nivel"));
+            selectElement.className = nivelAnteriorClass; // Revertir estilo si falla
+        }
+    })
+    .catch(error => {
+        console.error("Error al actualizar:", error);
+        alert("Ocurrió un error al guardar los cambios.");
+        selectElement.className = nivelAnteriorClass;
+    });
+}
+</script>
 {% endblock %}
