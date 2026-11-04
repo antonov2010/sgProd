@@ -9,4 +9,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("personal/", include("apps.personal.urls")),
     path("dashboard/", include("apps.dashboard.urls")),
+    path("api/", include("apps.api.urls")),
 ]
