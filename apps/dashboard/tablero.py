@@ -89,8 +89,116 @@ def _cadena(puntos):
     return " ".join(f"{x},{y}" for x, y in puntos)
 
 
-def construir_tablero(registros, umbrales=UMBRALES):
-    """Arma todo lo que la pantalla necesita a partir de los registros."""
+def _grafica(horas, serie, ymin, ymax, umbrales):
+    """Geometría de la gráfica grande de una línea (SVG)."""
+    ancho, alto, margen = 640, 240, 48
+    pts = _puntos(serie, ancho, alto, margen, ymin, ymax)
+
+    def y_de(valor):
+        return _puntos([valor], ancho, alto, margen, ymin, ymax)[0][1]
+
+    return {
+        "ancho": ancho,
+        "alto": alto,
+        "linea": _cadena(pts),
+        "puntos": [
+            {
+                "x": x,
+                "y": y,
+                "hora": horas[i],
+                "valor": _texto(serie[i]),
+                "estado": semaforo(serie[i], "fpy", umbrales),
+            }
+            for i, (x, y) in enumerate(pts)
+        ],
+        "horas": [{"x": pts[i][0], "texto": h} for i, h in enumerate(horas)],
+        "guias": [
+            {"y": y_de(v), "texto": f"{v} %"} for v in range(int(ymin), 101, 5)
+        ],
+        "y_verde": y_de(umbrales["fpy"]["verde"]),
+        "y_amarillo": y_de(umbrales["fpy"]["amarillo"]),
+        "verde": f"{umbrales['fpy']['verde']:g} %",
+        "amarillo": f"{umbrales['fpy']['amarillo']:g} %",
+        "izq": margen,
+        "der": ancho - margen,
+        "resumen": ", ".join(f"{horas[i]} {_texto(serie[i])}" for i in range(len(horas))),
+    }
+
+
+def _personal_linea(info, visibles=6):
+    """Quién está en la línea; solo se muestran los primeros nombres."""
+    if not info:
+        return {"jefe": "", "total": 0, "visibles": [], "mas": 0}
+    operadores = list(info.get("operadores", []))
+    return {
+        "jefe": info.get("jefe", ""),
+        "total": len(operadores),
+        "visibles": operadores[:visibles],
+        "mas": max(0, len(operadores) - visibles),
+    }
+
+
+def _piezas_por_hora(registros, umbrales):
+    """Piezas buenas por hora (promedio por estación) contra la meta."""
+    horas = {r["hora"] for r in registros}
+    estaciones = {r["estacion"] for r in registros}
+    base = len(horas) * len(estaciones)
+    if base == 0:
+        return None
+    s = _sumar(registros)
+    cumplimiento = cumplimiento_meta(s["aceptadas"], s["meta"])
+    estado = semaforo(cumplimiento, "meta", umbrales)
+    tope = 120.0  # la barra llega hasta 120 % de la meta
+    ancho = 0 if cumplimiento is None else min(cumplimiento, tope) / tope * 100
+    return {
+        "valor": f"{s['aceptadas'] / base:.1f}",
+        "meta": f"{s['meta'] / base:.1f}",
+        "cumplimiento": _texto(cumplimiento),
+        "estado": estado,
+        "etiqueta": ETIQUETAS[estado],
+        "ancho": f"{ancho:.1f}",
+        "marca": f"{100 / tope * 100:.1f}",
+    }
+
+
+def _defectos_por_empleado(registros, umbrales, limite=6):
+    """Empleados con mayor tasa de rechazo (solo si el registro trae empleado)."""
+    grupos = {}
+    for r in registros:
+        if r.get("empleado"):
+            clave = (r["empleado"], r["linea"], r["estacion"])
+            grupos.setdefault(clave, []).append(r)
+    filas = []
+    for (nombre, linea, estacion), regs in grupos.items():
+        s = _sumar(regs)
+        tasa = tasa_defectos(s["aceptadas"], s["rechazadas"], s["retrabajo"])
+        filas.append((tasa if tasa is not None else -1, nombre, linea, estacion, s))
+    filas.sort(key=lambda f: (-f[0], f[1]))
+    maximo = max((f[0] for f in filas), default=0) or 1
+    resultado = []
+    for tasa, nombre, linea, estacion, s in filas[:limite]:
+        valor = None if tasa < 0 else tasa
+        estado = semaforo(valor, "defectos", umbrales)
+        resultado.append(
+            {
+                "nombre": nombre,
+                "donde": f"{linea} · {estacion}",
+                "tasa": _texto(valor),
+                "rechazadas": s["rechazadas"],
+                "estado": estado,
+                "etiqueta": ETIQUETAS[estado],
+                "ancho": f"{max(valor or 0, 0) / maximo * 100:.1f}",
+            }
+        )
+    return resultado
+
+
+def construir_tablero(registros, personal=None, umbrales=UMBRALES):
+    """Arma todo lo que la pantalla necesita a partir de los registros.
+
+    personal: dict opcional {línea: {"jefe": str, "operadores": [str]}}.
+    """
+    personal = personal or {}
     todas = _sumar(registros)
     f_planta = fpy(todas["aceptadas"], todas["rechazadas"], todas["retrabajo"])
     d_planta = tasa_defectos(
@@ -115,7 +223,6 @@ def construir_tablero(registros, umbrales=UMBRALES):
             }
         )
 
-    # Primero se calcula la serie hora por hora de cada línea.
     datos = []
     for nombre, regs in _agrupar(registros, "linea").items():
         estaciones = []
@@ -136,87 +243,59 @@ def construir_tablero(registros, umbrales=UMBRALES):
                 "nombre": nombre,
                 "fpy_num": _fpy_de(regs),
                 "estaciones": estaciones,
+                "regs": regs,
                 "estado": peor(e["estado"] for e in estaciones),
                 "horas": list(por_hora),
                 "serie": [_fpy_de(por_hora[h]) for h in por_hora],
             }
         )
 
-    todos_los_valores = [
-        v for d in datos for v in d["serie"] if v is not None
-    ]
+    valores = [v for d in datos for v in d["serie"] if v is not None]
     # El eje siempre deja ver los dos umbrales y la caída más baja.
     ymin = umbrales["fpy"]["amarillo"] - 5
-    if todos_los_valores:
-        ymin = min(ymin, (min(todos_los_valores) // 5) * 5)
+    if valores:
+        ymin = min(ymin, (min(valores) // 5) * 5)
     ymin = float(ymin)
     ymax = 100.0
 
     lineas = []
-    for d in datos:
+    for i, d in enumerate(datos, start=1):
         validos = [v for v in d["serie"] if v is not None]
         # La mini gráfica usa su propia escala para que se note la forma.
         bajo = min(validos, default=ymin) - 1
         alto_s = max(max(validos, default=ymax) + 1, bajo + 4)
-        spark = _puntos(d["serie"], 160, 44, 6, bajo, alto_s)
         lineas.append(
             {
+                "id": f"l{i}",
                 "nombre": d["nombre"],
                 "fpy": _texto(d["fpy_num"]),
+                "fpy_num": d["fpy_num"],
                 "estado": d["estado"],
                 "etiqueta": ETIQUETAS[d["estado"]],
                 "estaciones": d["estaciones"],
-                "spark": _cadena(spark),
+                "spark": _cadena(_puntos(d["serie"], 160, 44, 6, bajo, alto_s)),
+                "personal": _personal_linea(personal.get(d["nombre"])),
+                "piezas": _piezas_por_hora(d["regs"], umbrales),
+                "grafica": _grafica(d["horas"], d["serie"], ymin, ymax, umbrales),
             }
         )
 
-    # La gráfica grande muestra la línea con el peor estado (si hay empate,
-    # la de menor FPY): es la que el gerente necesita mirar primero.
-    tendencia = None
-    if datos:
+    # Al abrir, la gráfica grande es la de la línea con peor estado
+    # (si hay empate, la de menor FPY): es la que se debe mirar primero.
+    activa = None
+    if lineas:
         foco = min(
-            datos,
-            key=lambda d: (
-                _GRAVEDAD_ORDEN[d["estado"]],
-                d["fpy_num"] if d["fpy_num"] is not None else 101,
+            lineas,
+            key=lambda x: (
+                _GRAVEDAD_ORDEN[x["estado"]],
+                x["fpy_num"] if x["fpy_num"] is not None else 101,
             ),
         )
-        horas, serie = foco["horas"], foco["serie"]
-        ancho, alto, margen = 640, 240, 48
-        pts = _puntos(serie, ancho, alto, margen, ymin, ymax)
+        activa = foco["id"]
 
-        def y_de(valor):
-            return _puntos([valor], ancho, alto, margen, ymin, ymax)[0][1]
-
-        tendencia = {
-            "titulo": foco["nombre"],
-            "ancho": ancho,
-            "alto": alto,
-            "linea": _cadena(pts),
-            "puntos": [
-                {
-                    "x": x,
-                    "y": y,
-                    "hora": horas[i],
-                    "valor": _texto(serie[i]),
-                    "estado": semaforo(serie[i], "fpy", umbrales),
-                }
-                for i, (x, y) in enumerate(pts)
-            ],
-            "horas": [{"x": pts[i][0], "texto": h} for i, h in enumerate(horas)],
-            "guias": [
-                {"y": y_de(v), "texto": f"{v} %"}
-                for v in range(int(ymin), 101, 5)
-            ],
-            "y_verde": y_de(umbrales["fpy"]["verde"]),
-            "y_amarillo": y_de(umbrales["fpy"]["amarillo"]),
-            "verde": f"{umbrales['fpy']['verde']:g} %",
-            "amarillo": f"{umbrales['fpy']['amarillo']:g} %",
-            "izq": margen,
-            "der": ancho - margen,
-            "resumen": ", ".join(
-                f"{horas[i]} {_texto(serie[i])}" for i in range(len(horas))
-            ),
-        }
-
-    return {"kpis": kpis, "lineas": lineas, "tendencia": tendencia}
+    return {
+        "kpis": kpis,
+        "lineas": lineas,
+        "activa": activa,
+        "empleados": _defectos_por_empleado(registros, umbrales),
+    }

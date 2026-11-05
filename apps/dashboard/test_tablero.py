@@ -1,6 +1,6 @@
 """Pruebas del cálculo del tablero (las fórmulas de KPI exigen 100 %)."""
 
-from .datos_ejemplo import registros_ejemplo
+from .datos_ejemplo import personal_ejemplo, registros_ejemplo
 from .tablero import construir_tablero, cumplimiento_meta, fpy, tasa_defectos
 from .umbrales import UMBRALES, peor, semaforo
 
@@ -56,28 +56,74 @@ def test_el_tablero_cambia_de_color_al_cambiar_el_umbral_sin_tocar_codigo():
         **UMBRALES,
         "fpy": {"verde": 99.9, "amarillo": 99.0, "mejor": "alto"},
     }
-    cambiado = construir_tablero(registros, estricto)
+    cambiado = construir_tablero(registros, umbrales=estricto)
     assert normal["kpis"][0]["estado"] != cambiado["kpis"][0]["estado"]
 
 
-def test_la_estacion_que_cae_pone_en_rojo_o_amarillo_su_linea():
+def _linea(tablero, nombre):
+    return next(x for x in tablero["lineas"] if x["nombre"] == nombre)
+
+
+def test_hay_siete_lineas():
+    tablero = construir_tablero(registros_ejemplo(), personal_ejemplo())
+    assert len(tablero["lineas"]) == 7
+
+
+def test_la_estacion_que_cae_pone_en_rojo_su_linea():
     tablero = construir_tablero(registros_ejemplo())
-    linea3 = next(x for x in tablero["lineas"] if x["nombre"] == "Línea 3")
-    assert linea3["estado"] in ("warn", "bad")
+    assert _linea(tablero, "Línea 3")["estado"] == "bad"
 
 
-def test_la_tendencia_tiene_un_punto_por_hora():
+def test_cada_linea_tiene_su_tendencia_con_un_punto_por_hora():
     tablero = construir_tablero(registros_ejemplo())
-    assert len(tablero["tendencia"]["puntos"]) == 8
+    for linea in tablero["lineas"]:
+        assert len(linea["grafica"]["puntos"]) == 8
 
 
-def test_la_grafica_grande_muestra_la_linea_con_peor_estado():
+def test_al_abrir_se_muestra_la_linea_con_peor_estado():
     tablero = construir_tablero(registros_ejemplo())
-    assert tablero["tendencia"]["titulo"] == "Línea 3"
+    assert tablero["activa"] == _linea(tablero, "Línea 3")["id"]
+
+
+def test_se_muestran_los_nombres_de_quienes_estan_en_linea():
+    tablero = construir_tablero(registros_ejemplo(), personal_ejemplo())
+    personal = _linea(tablero, "Línea 1")["personal"]
+    assert personal["jefe"]
+    assert personal["total"] >= 14
+    assert len(personal["visibles"]) == 6
+    assert personal["mas"] == personal["total"] - 6
+
+
+def test_sin_personal_el_tablero_sigue_funcionando():
+    tablero = construir_tablero(registros_ejemplo())
+    assert _linea(tablero, "Línea 1")["personal"]["total"] == 0
 
 
 def test_sin_registros_no_truena():
     tablero = construir_tablero([])
     assert tablero["lineas"] == []
-    assert tablero["tendencia"] is None
+    assert tablero["activa"] is None
     assert tablero["kpis"][0]["estado"] == "none"
+
+
+def test_cada_linea_tiene_piezas_por_hora_contra_la_meta():
+    tablero = construir_tablero(registros_ejemplo())
+    for linea in tablero["lineas"]:
+        assert float(linea["piezas"]["valor"]) > 0
+        assert linea["piezas"]["estado"] in ("ok", "warn", "bad")
+
+
+def test_la_tasa_de_defectos_por_empleado_pone_primero_al_peor():
+    tablero = construir_tablero(registros_ejemplo())
+    primero = tablero["empleados"][0]
+    assert primero["donde"] == "Línea 3 · Soldadura"
+    assert primero["estado"] == "bad"
+    assert len(tablero["empleados"]) == 6
+
+
+def test_sin_empleado_en_los_registros_la_lista_queda_vacia():
+    registros = [
+        {k: v for k, v in r.items() if k != "empleado"}
+        for r in registros_ejemplo()
+    ]
+    assert construir_tablero(registros)["empleados"] == []
