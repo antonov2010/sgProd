@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Matriz de Competencias · SG-Prod{% endblock %}
+
+{% block nav_links %}
+  <span style="color: white; font-weight: 500; margin-right: 15px;">
+    {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
+  </span>
+  <a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
+  <a href="{% url 'personal:logout' %}">Cerrar sesión</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Liberar el contenedor padre de base.html para usar el 100% real del ancho de pantalla */
+    main, .container, .container-fluid, .content-wrapper {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
+    /* Ajustes para aprovechamiento de ancho completo */
+    .matriz-container {
+        padding: 1rem 0;
+        width: 100%;
+    }
+    .matriz-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+        width: 100%;
+    }
+    .matriz-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .matriz-table {
+        width: 100%;
+        min-width: 1000px;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.875rem;
+    }
+    .matriz-table th {
+        background-color: #0d5c75;
+        color: #ffffff;
+        font-weight: 600;
+        text-align: center;
+        padding: 12px 10px;
+        border-bottom: 2px solid #094153;
+        white-space: nowrap;
+    }
+    .matriz-table th.col-empleado {
+        text-align: left;
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        background-color: #0d5c75;
+        min-width: 180px;
+        padding-left: 16px;
+    }
+    .matriz-table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #edf2f7;
+        text-align: center;
+        vertical-align: middle;
+        background-color: #ffffff;
+    }
+    .matriz-table tr:nth-child(even) td {
+        background-color: #f8fafc;
+    }
+    .matriz-table tr:hover td {
+        background-color: #f1f5f9;
+    }
+    .matriz-table td.cell-empleado {
+        text-align: left;
+        font-weight: 600;
+        color: #1e293b;
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        border-right: 2px solid #e2e8f0;
+        padding-left: 16px;
+        white-space: nowrap;
+    }
+    .matriz-table tr:nth-child(even) td.cell-empleado {
+        background-color: #f8fafc;
+    }
+    .matriz-table tr:hover td.cell-empleado {
+        background-color: #f1f5f9;
+    }
+
+    /* Selectores con estilo de Badge para edición */
+    .sg-select-nivel {
+        display: inline-block;
+        padding: 4px 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border-radius: 16px;
+        text-align: center;
+        white-space: nowrap;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .sg-badge-instructor {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 1px solid #f59e0b;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        font-weight: 700;
+    }
+    .sg-badge-experto {
+        background-color: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+    .sg-badge-autonomo {
+        background-color: #e0f2fe;
+        color: #075985;
+        border: 1px solid #7dd3fc;
+    }
+    .sg-badge-principiante {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    .sg-badge-sinnivel {
+        background-color: #ffffff;
+        color: #94a3b8;
+        border: 1px dashed #cbd5e1;
+        font-style: italic;
+    }
+</style>
+
+<div class="matriz-container">
+    <header class="sg-page-head" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <p class="sg-eyebrow">Jefatura de Línea · Personal</p>
+            <h1>Matriz de Competencias — {{ linea.nombre|default:"Sin Línea Asignada" }}</h1>
+            <p class="sg-muted">Consulta y edición de niveles de habilidad por operador y estación de trabajo.</p>
+        </div>
+        <a href="{% url 'dashboard:pantalla_jefe' %}" style="background-color: #f1f5f9; color: #0d5c75; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+            ← Volver al Tablero
+        </a>
+    </header>
+
+    {% if not linea %}
+        <div class="sg-empty">No hay información de línea asignada para este usuario.</div>
+    {% else %}
+        <div class="matriz-card">
+            <div class="matriz-table-wrapper">
+                <table class="matriz-table">
+                    <thead>
+                        <tr>
+                            <th class="col-empleado">Empleado / Operador</th>
+                            {% for estacion in estaciones %}
+                                <th>{{ estacion.nombre }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in matriz %}
+                            <tr>
+                                <td class="cell-empleado">
+                                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+                                        {{ fila.empleado.numero_empleado }}
+                                    </div>
+                                    <div style="font-weight: 600; color: #1e293b;">
+                                        {{ fila.empleado.nombre }} {{ fila.empleado.apellido }}
+                                    </div>
+                                </td>
+                                
+                                {% for celda in fila.niveles %}
+                                    <td>
+                                        <select class="sg-select-nivel {% if celda.nivel == 'Instructor' %}sg-badge-instructor{% elif celda.nivel == 'Experto' %}sg-badge-experto{% elif celda.nivel == 'Autónomo' %}sg-badge-autonomo{% elif celda.nivel == 'Principiante' %}sg-badge-principiante{% else %}sg-badge-sinnivel{% endif %}"
+                                                data-empleado-id="{{ fila.empleado.id }}"
+                                                data-estacion-id="{{ celda.estacion.id|default:celda.estacion_id }}"
+                                                onchange="actualizarNivel(this)">
+                                            <option value="Sin nivel" {% if celda.nivel == 'Sin nivel' or not celda.nivel %}selected{% endif %}>Sin nivel</option>
+                                            <option value="Principiante" {% if celda.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
+                                            <option value="Autónomo" {% if celda.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
+                                            <option value="Experto" {% if celda.nivel == 'Experto' %}selected{% endif %}>Experto</option>
+                                            <option value="Instructor" {% if celda.nivel == 'Instructor' %}selected{% endif %}>⭐ Instructor</option>
+                                        </select>
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="{{ estaciones|length|add:1 }}" style="padding: 2rem; color: #64748b;">
+                                    No hay empleados activos en esta línea.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function actualizarNivel(selectElement) {
+    const empleadoId = selectElement.getAttribute('data-empleado-id');
+    const estacionId = selectElement.getAttribute('data-estacion-id');
+    const nuevoNivel = selectElement.value;
+    const nivelAnteriorClass = selectElement.className;
+
+    // Actualizar clase de estilo de inmediato
+    selectElement.className = 'sg-select-nivel ';
+    if (nuevoNivel === 'Instructor') selectElement.classList.add('sg-badge-instructor');
+    else if (nuevoNivel === 'Experto') selectElement.classList.add('sg-badge-experto');
+    else if (nuevoNivel === 'Autónomo') selectElement.classList.add('sg-badge-autonomo');
+    else if (nuevoNivel === 'Principiante') selectElement.classList.add('sg-badge-principiante');
+    else selectElement.classList.add('sg-badge-sinnivel');
+
+    // Enviar cambio al backend
+    fetch("{% url 'personal:actualizar_nivel_matriz' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": "{{ csrf_token }}"
+        },
+        body: JSON.stringify({
+            empleado_id: empleadoId,
+            estacion_id: estacionId,
+            nivel: nuevoNivel
+        })
+    })
+    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(res => {
+        if (!res.body.success) {
+            alert("Error del sistema: " + (res.body.error || "No se pudo actualizar el nivel"));
+            selectElement.className = nivelAnteriorClass; // Revertir estilo si falla
+        }
+    })
+    .catch(error => {
+        console.error("Error al actualizar:", error);
+        alert("Ocurrió un error al guardar los cambios.");
+        selectElement.className = nivelAnteriorClass;
+    });
+}
+</script>
+{% endblock %}

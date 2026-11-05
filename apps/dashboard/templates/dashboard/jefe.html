@@ -3,6 +3,9 @@
 {% block title %}Tablero de turno · SG-Prod{% endblock %}
 
 {% block nav_links %}
+  <span style="color: white; font-weight: 500; margin-right: 15px;">
+    {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
+  </span>
   <a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
   <a href="{% url 'personal:logout' %}">Cerrar sesión</a>
 {% endblock %}
@@ -21,8 +24,12 @@
   <article class="sg-card sg-role-card">
     <p class="sg-eyebrow">Personal</p>
     <h2>Cobertura de estaciones</h2>
-    <p class="sg-muted">Quién está asignado y qué estaciones necesitan apoyo.</p>
-    <div class="sg-empty">Pendiente de conectar la asignación del turno.</div>
+   <p class="sg-muted">Quién está asignado y qué estaciones necesitan apoyo.</p>
+
+    <!-- Botón estilizado dentro del cuadro con la línea punteada del diseño -->
+    <a href="{% url 'personal:matriz_competencias' %}" class="sg-empty" style="display: block; text-decoration: none; background-color: #0d5c75; color: #ffffff; font-weight: 600; text-align: center; border-style: solid; border-color: #0d5c75;">
+      Consultar Matriz de Competencias →
+    </a>
   </article>
 
   <article class="sg-card sg-role-card">

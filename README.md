@@ -7,6 +7,7 @@ Este README sirve para tener tu ambiente local listo en unos 20 minutos. Si algo
 - [Guía del ambiente de desarrollo](docs/00_guia_ambiente_desarrollo.md): paso a paso, checklist y solución de problemas (§14).
 - [Alcance del proyecto](docs/01_alcance_del_proyecto.md).
 - [Guía para probar US-05](docs/02_guia_pruebas_us05.md): pruebas automáticas y verificación manual de empleados, estaciones y la relación Jefe de Línea ↔ Línea.
+- [Guía de la API REST y Swagger](docs/03_guia_api_swagger.md): autenticación, endpoints y cómo documentar uno nuevo.
 
 ---
 
@@ -326,7 +327,8 @@ sgProd/
 │   ├── core/               # autenticación QR/PIN
 │   ├── personal/           # empleados, estaciones, skill matrix (Módulo 1)
 │   ├── calidad/            # captura horaria, defectos (Módulo 2)
-│   └── dashboard/          # KPIs, bonos, capacitación (Módulo 3)
+│   ├── dashboard/          # KPIs, bonos, capacitación (Módulo 3)
+│   └── api/                # API REST + Swagger (docs/03)
 ├── templates/              # base.html (paquete de diseño)
 ├── static/css/theme.css    # estilos compartidos (paquete de diseño)
 ├── data/seed/              # dataset JSON de demo (US-04)
@@ -334,3 +336,27 @@ sgProd/
 ├── SG-Prod_diseno/         # paquete de diseño original y guía de estilo
 └── docs/                   # guías del ambiente, alcance y pruebas por historia
 ```
+
+---
+
+## 9. API REST y Swagger
+
+El proyecto expone una API REST de solo lectura (empleados, estaciones, matriz de
+habilidades, calidad y KPIs) más un `POST` para la matriz, documentada con
+OpenAPI 3. La interfaz interactiva vive en `/api/docs/`.
+
+```bash
+python manage.py runserver
+# abre http://127.0.0.1:8000/api/docs/  (inicia sesión antes en /admin/)
+```
+
+> Las colecciones requieren un **usuario de Django** (`User`), no el login de
+> planta. El PIN de los empleados nunca se devuelve por la API.
+
+- Rutas: `/api/docs/` (Swagger UI) · `/api/redoc/` · `/api/schema/`
+- Guía completa, autenticación y cómo documentar endpoints nuevos:
+  [docs/03_guia_api_swagger.md](docs/03_guia_api_swagger.md).
+- Se usa [`drf-spectacular`](https://drf-spectacular.readthedocs.io/), no
+  `django-rest-swagger`: ese último está archivado y no corre en Django 5.2
+  (explicación en la [§0 de la guía](docs/03_guia_api_swagger.md#0-antes-de-empezar-por-qué-no-django-rest-swagger)).
+
