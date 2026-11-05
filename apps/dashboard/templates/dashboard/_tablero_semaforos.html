@@ -1,0 +1,116 @@
+{# Tablero At-a-Glance (US-13). Se incluye desde gerente.html. #}
+{# Datos de ejemplo hasta que existan los registros reales (US-11 y US-12). #}
+<style>
+  .tg { --tg-ok: var(--sg-ok, #1E8E4E); --tg-warn: var(--sg-warn, #C98A00); --tg-bad: var(--sg-bad, #C8322B);
+        --tg-line: var(--sg-line, rgba(128,128,128,.35)); --tg-card: var(--sg-card, transparent);
+        --tg-muted: var(--sg-muted, rgba(128,128,128,.95)); }
+  .tg * { box-sizing: border-box; }
+  .tg { margin-bottom: 1.5rem; }
+  .tg h3 { margin: 0; }
+  .tg-aviso { margin: 0 0 1rem; color: var(--tg-muted); font-size: .95rem; }
+  .tg-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  .tg-card { background: var(--tg-card); border: 1px solid var(--tg-line); border-radius: 10px; padding: 1rem 1.15rem; }
+  .tg-kpi { border-left: 8px solid var(--tg-line); }
+  .tg-kpi.is-ok, .tg-linea.is-ok { border-left-color: var(--tg-ok); }
+  .tg-kpi.is-warn, .tg-linea.is-warn { border-left-color: var(--tg-warn); }
+  .tg-kpi.is-bad, .tg-linea.is-bad { border-left-color: var(--tg-bad); }
+  .tg-kpi small { display: block; color: var(--tg-muted); }
+  .tg-valor { display: block; margin: .15rem 0; font-size: 2.2rem; font-weight: 700; line-height: 1.1; }
+  .tg-cab { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
+  .tg-badge { display: inline-block; padding: .1rem .65rem; border-radius: 999px; font-size: .85rem; font-weight: 700;
+              border: 1.5px solid currentColor; white-space: nowrap; }
+  .tg-badge.is-ok { color: var(--tg-ok); } .tg-badge.is-warn { color: var(--tg-warn); }
+  .tg-badge.is-bad { color: var(--tg-bad); } .tg-badge.is-none { color: var(--tg-muted); }
+  .tg-sec { margin: 1.5rem 0 .75rem; font-size: 1.25rem; }
+  .tg-lineas { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; }
+  .tg-linea { border-left: 8px solid var(--tg-line); }
+  .tg-resumen { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .25rem 0 .75rem; }
+  .tg-resumen strong { font-size: 1.6rem; }
+  .tg-spark { width: 160px; height: 44px; flex: none; }
+  .tg-estaciones { list-style: none; margin: 0; padding: 0; }
+  .tg-estaciones li { display: flex; align-items: center; gap: .6rem; padding: .45rem 0; border-top: 1px solid var(--tg-line); }
+  .tg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .tg-dot.is-ok { background: var(--tg-ok); } .tg-dot.is-warn { background: var(--tg-warn); }
+  .tg-dot.is-bad { background: var(--tg-bad); } .tg-dot.is-none { background: var(--tg-muted); }
+  .tg-estaciones .n { flex: 1; min-width: 0; }
+  .tg-estaciones .v { font-weight: 700; white-space: nowrap; }
+  .tg-estaciones .e { min-width: 5.2rem; white-space: nowrap; text-align: right; color: var(--tg-muted); font-size: .9rem; }
+  .tg-grafica { width: 100%; height: auto; display: block; }
+  .tg-grafica text { fill: currentColor; font-size: 12px; }
+  .tg-leyenda { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .5rem; color: var(--tg-muted); font-size: .9rem; }
+  .tg-leyenda span { display: inline-flex; align-items: center; gap: .4rem; }
+</style>
+
+<div class="tg">
+  <p class="tg-aviso">Datos de ejemplo: se conectarán a la captura horaria real cuando esté lista.</p>
+
+  <section class="tg-kpis" aria-label="Indicadores de planta">
+    {% for k in tablero.kpis %}
+    <article class="tg-card tg-kpi is-{{ k.estado }}">
+      <div class="tg-cab">
+        <h3>{{ k.nombre }}</h3>
+        <span class="tg-badge is-{{ k.estado }}">{{ k.etiqueta }}</span>
+      </div>
+      <span class="tg-valor">{{ k.valor }}</span>
+      <small>{{ k.objetivo }}</small>
+    </article>
+    {% endfor %}
+  </section>
+
+  <h2 class="tg-sec">Líneas de producción</h2>
+  <section class="tg-lineas" aria-label="Estado por línea y estación">
+    {% for l in tablero.lineas %}
+    <article class="tg-card tg-linea is-{{ l.estado }}">
+      <div class="tg-cab">
+        <h3>{{ l.nombre }}</h3>
+        <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
+      </div>
+      <div class="tg-resumen">
+        <div><strong>{{ l.fpy }}</strong><br><small class="tg-muted">FPY de la línea</small></div>
+        <svg class="tg-spark" viewBox="0 0 160 44" role="img" aria-label="Tendencia hora por hora de {{ l.nombre }}">
+          <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <ul class="tg-estaciones">
+        {% for e in l.estaciones %}
+        <li>
+          <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
+          <span class="n">{{ e.nombre }}</span>
+          <span class="v">{{ e.fpy }}</span>
+          <span class="e">{{ e.etiqueta }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% endfor %}
+  </section>
+
+  {% if tablero.tendencia %}
+  {% with t=tablero.tendencia %}
+  <h2 class="tg-sec">Tendencia hora por hora · {{ t.titulo }}</h2>
+  <article class="tg-card">
+    <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
+         aria-label="FPY de {{ t.titulo }} por hora: {{ t.resumen }}">
+      {% for g in t.guias %}
+      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
+      <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+      {% endfor %}
+      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      {% for p in t.puntos %}
+      <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card, #fff)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
+      {% endfor %}
+      {% for h in t.horas %}
+      <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
+      {% endfor %}
+    </svg>
+    <div class="tg-leyenda">
+      <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
+      <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
+      <span><i class="tg-dot is-bad"></i> Rojo: menos de {{ t.amarillo }}</span>
+    </div>
+  </article>
+  {% endwith %}
+  {% endif %}
+</div>
