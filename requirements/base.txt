@@ -3,3 +3,8 @@ psycopg[binary]==3.2.*
 django-environ==0.11.*
 qrcode[pil]==8.*
 Pillow==11.*
+
+# API REST y documentación OpenAPI/Swagger (ver docs/03_guia_api_swagger.md)
+djangorestframework==3.16.*
+drf-spectacular==0.30.*
+
