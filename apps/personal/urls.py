@@ -21,3 +21,4 @@ urlpatterns += [
     path("matriz/", views.matriz_competencias, name="matriz_competencias"),
     path("matriz/actualizar-nivel/", views.actualizar_nivel_matriz, name="actualizar_nivel_matriz"),
 ]
+

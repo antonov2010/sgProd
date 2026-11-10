@@ -1,0 +1,2022 @@
+[
+  {
+    "model": "personal.empleado",
+    "pk": 1,
+    "fields": {
+      "numero_empleado": "EMP001",
+      "nombre": "Juan Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 2,
+    "fields": {
+      "numero_empleado": "EMP002",
+      "nombre": "María Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 3,
+    "fields": {
+      "numero_empleado": "SG-0001",
+      "nombre": "Laura Méndez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 4,
+    "fields": {
+      "numero_empleado": "SG-0002",
+      "nombre": "Rocío Salas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 5,
+    "fields": {
+      "numero_empleado": "SG-0003",
+      "nombre": "Mariana Ortiz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 6,
+    "fields": {
+      "numero_empleado": "SG-0004",
+      "nombre": "Iván Castro",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 7,
+    "fields": {
+      "numero_empleado": "SG-0006",
+      "nombre": "Eduardo Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 8,
+    "fields": {
+      "numero_empleado": "SG-0007",
+      "nombre": "Martha Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 9,
+    "fields": {
+      "numero_empleado": "SG-0005",
+      "nombre": "Verónica Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 10,
+    "fields": {
+      "numero_empleado": "SG-0008",
+      "nombre": "Rosa López",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 11,
+    "fields": {
+      "numero_empleado": "SG-0009",
+      "nombre": "Adriana Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 12,
+    "fields": {
+      "numero_empleado": "SG-0010",
+      "nombre": "Rosa Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 13,
+    "fields": {
+      "numero_empleado": "SG-0011",
+      "nombre": "Pablo Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 14,
+    "fields": {
+      "numero_empleado": "SG-0012",
+      "nombre": "Ricardo Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 15,
+    "fields": {
+      "numero_empleado": "SG-0013",
+      "nombre": "Alberto Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 16,
+    "fields": {
+      "numero_empleado": "SG-0014",
+      "nombre": "Javier Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 17,
+    "fields": {
+      "numero_empleado": "SG-0015",
+      "nombre": "Alberto Silva",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 18,
+    "fields": {
+      "numero_empleado": "SG-0016",
+      "nombre": "Francisco Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 19,
+    "fields": {
+      "numero_empleado": "SG-0017",
+      "nombre": "Teresa Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 20,
+    "fields": {
+      "numero_empleado": "SG-0018",
+      "nombre": "Teresa Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 21,
+    "fields": {
+      "numero_empleado": "SG-0019",
+      "nombre": "Silvia Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 22,
+    "fields": {
+      "numero_empleado": "SG-0020",
+      "nombre": "Pablo Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 23,
+    "fields": {
+      "numero_empleado": "SG-0021",
+      "nombre": "Ricardo Soto",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 24,
+    "fields": {
+      "numero_empleado": "SG-0022",
+      "nombre": "Rosa García",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 25,
+    "fields": {
+      "numero_empleado": "SG-0023",
+      "nombre": "Norma Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 26,
+    "fields": {
+      "numero_empleado": "SG-0024",
+      "nombre": "Gabriela Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 27,
+    "fields": {
+      "numero_empleado": "SG-0025",
+      "nombre": "Norma Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 28,
+    "fields": {
+      "numero_empleado": "SG-0026",
+      "nombre": "Manuel Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 29,
+    "fields": {
+      "numero_empleado": "SG-0027",
+      "nombre": "Manuel López",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 30,
+    "fields": {
+      "numero_empleado": "SG-0028",
+      "nombre": "Elena González",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 31,
+    "fields": {
+      "numero_empleado": "SG-0029",
+      "nombre": "Sofía Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 32,
+    "fields": {
+      "numero_empleado": "SG-0030",
+      "nombre": "Alejandro Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 33,
+    "fields": {
+      "numero_empleado": "SG-0031",
+      "nombre": "Javier González",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 34,
+    "fields": {
+      "numero_empleado": "SG-0032",
+      "nombre": "Francisco Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 35,
+    "fields": {
+      "numero_empleado": "SG-0033",
+      "nombre": "Adriana Soto",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 36,
+    "fields": {
+      "numero_empleado": "SG-0034",
+      "nombre": "Francisco López",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 37,
+    "fields": {
+      "numero_empleado": "SG-0035",
+      "nombre": "Carmen Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 38,
+    "fields": {
+      "numero_empleado": "SG-0036",
+      "nombre": "Alberto García",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 39,
+    "fields": {
+      "numero_empleado": "SG-0037",
+      "nombre": "Daniel Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 40,
+    "fields": {
+      "numero_empleado": "SG-0038",
+      "nombre": "Jorge Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 41,
+    "fields": {
+      "numero_empleado": "SG-0039",
+      "nombre": "Adriana Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 42,
+    "fields": {
+      "numero_empleado": "SG-0040",
+      "nombre": "Claudia Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 43,
+    "fields": {
+      "numero_empleado": "SG-0041",
+      "nombre": "Daniel Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 44,
+    "fields": {
+      "numero_empleado": "SG-0042",
+      "nombre": "Sergio Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 45,
+    "fields": {
+      "numero_empleado": "SG-0043",
+      "nombre": "Raúl Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 46,
+    "fields": {
+      "numero_empleado": "SG-0044",
+      "nombre": "Gabriela Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 47,
+    "fields": {
+      "numero_empleado": "SG-0045",
+      "nombre": "Carmen González",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 48,
+    "fields": {
+      "numero_empleado": "SG-0046",
+      "nombre": "Lorena Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 49,
+    "fields": {
+      "numero_empleado": "SG-0047",
+      "nombre": "Alberto Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 50,
+    "fields": {
+      "numero_empleado": "SG-0048",
+      "nombre": "Sergio Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 51,
+    "fields": {
+      "numero_empleado": "SG-0049",
+      "nombre": "Héctor Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 52,
+    "fields": {
+      "numero_empleado": "SG-0050",
+      "nombre": "Javier Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 53,
+    "fields": {
+      "numero_empleado": "SG-0051",
+      "nombre": "Sergio Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 54,
+    "fields": {
+      "numero_empleado": "SG-0052",
+      "nombre": "Lorena Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 55,
+    "fields": {
+      "numero_empleado": "SG-0053",
+      "nombre": "Patricia Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 56,
+    "fields": {
+      "numero_empleado": "SG-0054",
+      "nombre": "Sofía Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 57,
+    "fields": {
+      "numero_empleado": "SG-0055",
+      "nombre": "Héctor Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 58,
+    "fields": {
+      "numero_empleado": "SG-0056",
+      "nombre": "Alejandro Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 59,
+    "fields": {
+      "numero_empleado": "SG-0057",
+      "nombre": "Javier Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 60,
+    "fields": {
+      "numero_empleado": "SG-0058",
+      "nombre": "Silvia Núñez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 61,
+    "fields": {
+      "numero_empleado": "SG-0059",
+      "nombre": "Teresa Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 62,
+    "fields": {
+      "numero_empleado": "SG-0060",
+      "nombre": "Norma Martínez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 63,
+    "fields": {
+      "numero_empleado": "SG-0061",
+      "nombre": "Claudia Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 64,
+    "fields": {
+      "numero_empleado": "SG-0062",
+      "nombre": "Lorena Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 65,
+    "fields": {
+      "numero_empleado": "SG-0063",
+      "nombre": "Rosa Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 66,
+    "fields": {
+      "numero_empleado": "SG-0064",
+      "nombre": "Ricardo Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 67,
+    "fields": {
+      "numero_empleado": "SG-0065",
+      "nombre": "Óscar Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 68,
+    "fields": {
+      "numero_empleado": "SG-0066",
+      "nombre": "Óscar Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 69,
+    "fields": {
+      "numero_empleado": "SG-0067",
+      "nombre": "Pablo Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 70,
+    "fields": {
+      "numero_empleado": "SG-0068",
+      "nombre": "Lorena Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 71,
+    "fields": {
+      "numero_empleado": "SG-0069",
+      "nombre": "Gabriela Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 72,
+    "fields": {
+      "numero_empleado": "SG-0070",
+      "nombre": "Óscar Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 73,
+    "fields": {
+      "numero_empleado": "SG-0071",
+      "nombre": "Alejandro Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 74,
+    "fields": {
+      "numero_empleado": "SG-0072",
+      "nombre": "Sofía Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 75,
+    "fields": {
+      "numero_empleado": "SG-0073",
+      "nombre": "Patricia Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 76,
+    "fields": {
+      "numero_empleado": "SG-0074",
+      "nombre": "Daniel Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 77,
+    "fields": {
+      "numero_empleado": "SG-0075",
+      "nombre": "Javier Vázquez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 78,
+    "fields": {
+      "numero_empleado": "SG-0076",
+      "nombre": "Verónica Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 79,
+    "fields": {
+      "numero_empleado": "SG-0077",
+      "nombre": "Óscar Medina",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 80,
+    "fields": {
+      "numero_empleado": "SG-0078",
+      "nombre": "Lorena González",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 81,
+    "fields": {
+      "numero_empleado": "SG-0079",
+      "nombre": "Héctor Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 82,
+    "fields": {
+      "numero_empleado": "SG-0080",
+      "nombre": "Daniel Silva",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 83,
+    "fields": {
+      "numero_empleado": "SG-0081",
+      "nombre": "Sofía Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 84,
+    "fields": {
+      "numero_empleado": "SG-0082",
+      "nombre": "Luis Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 85,
+    "fields": {
+      "numero_empleado": "SG-0083",
+      "nombre": "Adriana Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 86,
+    "fields": {
+      "numero_empleado": "SG-0084",
+      "nombre": "Ricardo Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 87,
+    "fields": {
+      "numero_empleado": "SG-0085",
+      "nombre": "Javier Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 88,
+    "fields": {
+      "numero_empleado": "SG-0086",
+      "nombre": "Raúl Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 89,
+    "fields": {
+      "numero_empleado": "SG-0087",
+      "nombre": "Sofía Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 90,
+    "fields": {
+      "numero_empleado": "SG-0088",
+      "nombre": "Óscar Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 91,
+    "fields": {
+      "numero_empleado": "SG-0089",
+      "nombre": "Verónica Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 92,
+    "fields": {
+      "numero_empleado": "SG-0090",
+      "nombre": "Norma Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 93,
+    "fields": {
+      "numero_empleado": "SG-0091",
+      "nombre": "Javier Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 94,
+    "fields": {
+      "numero_empleado": "SG-0092",
+      "nombre": "Alberto Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 95,
+    "fields": {
+      "numero_empleado": "SG-0093",
+      "nombre": "Alejandro Martínez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 96,
+    "fields": {
+      "numero_empleado": "SG-0094",
+      "nombre": "Norma García",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 97,
+    "fields": {
+      "numero_empleado": "SG-0095",
+      "nombre": "Mónica Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 98,
+    "fields": {
+      "numero_empleado": "SG-0096",
+      "nombre": "Alejandro Medina",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 99,
+    "fields": {
+      "numero_empleado": "SG-0097",
+      "nombre": "Rosa Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 100,
+    "fields": {
+      "numero_empleado": "SG-0098",
+      "nombre": "Claudia Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 101,
+    "fields": {
+      "numero_empleado": "SG-0099",
+      "nombre": "Sofía Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 102,
+    "fields": {
+      "numero_empleado": "SG-0100",
+      "nombre": "Alejandro Torres",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 103,
+    "fields": {
+      "numero_empleado": "SG-0101",
+      "nombre": "Héctor Silva",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 104,
+    "fields": {
+      "numero_empleado": "SG-0102",
+      "nombre": "Francisco Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 105,
+    "fields": {
+      "numero_empleado": "SG-0103",
+      "nombre": "Carmen Vázquez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 106,
+    "fields": {
+      "numero_empleado": "SG-0104",
+      "nombre": "Sofía Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 107,
+    "fields": {
+      "numero_empleado": "SG-0105",
+      "nombre": "Óscar Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 108,
+    "fields": {
+      "numero_empleado": "SG-0106",
+      "nombre": "Rosa Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 109,
+    "fields": {
+      "numero_empleado": "SG-0107",
+      "nombre": "Francisco Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 110,
+    "fields": {
+      "numero_empleado": "SG-0108",
+      "nombre": "Héctor Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 111,
+    "fields": {
+      "numero_empleado": "SG-0109",
+      "nombre": "Carmen Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 112,
+    "fields": {
+      "numero_empleado": "SG-0110",
+      "nombre": "Gabriela Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 113,
+    "fields": {
+      "numero_empleado": "SG-0111",
+      "nombre": "Carmen Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 114,
+    "fields": {
+      "numero_empleado": "SG-0112",
+      "nombre": "Javier Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 115,
+    "fields": {
+      "numero_empleado": "SG-0113",
+      "nombre": "Pablo Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 116,
+    "fields": {
+      "numero_empleado": "SG-0114",
+      "nombre": "Ricardo Martínez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 117,
+    "fields": {
+      "numero_empleado": "SG-0115",
+      "nombre": "Teresa Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 118,
+    "fields": {
+      "numero_empleado": "SG-0116",
+      "nombre": "Sofía Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 119,
+    "fields": {
+      "numero_empleado": "SG-0117",
+      "nombre": "Teresa Vázquez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 120,
+    "fields": {
+      "numero_empleado": "SG-0118",
+      "nombre": "Raúl Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 121,
+    "fields": {
+      "numero_empleado": "SG-0119",
+      "nombre": "Ana López",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 122,
+    "fields": {
+      "numero_empleado": "SG-0120",
+      "nombre": "Manuel Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 123,
+    "fields": {
+      "numero_empleado": "SG-0121",
+      "nombre": "Silvia Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 124,
+    "fields": {
+      "numero_empleado": "SG-0122",
+      "nombre": "Alejandro Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 125,
+    "fields": {
+      "numero_empleado": "SG-0123",
+      "nombre": "Francisco Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 126,
+    "fields": {
+      "numero_empleado": "SG-0124",
+      "nombre": "Alberto Núñez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 127,
+    "fields": {
+      "numero_empleado": "SG-0125",
+      "nombre": "Óscar Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 128,
+    "fields": {
+      "numero_empleado": "SG-0126",
+      "nombre": "Jorge Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 129,
+    "fields": {
+      "numero_empleado": "SG-0127",
+      "nombre": "Lorena Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 130,
+    "fields": {
+      "numero_empleado": "SG-0128",
+      "nombre": "Verónica García",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 131,
+    "fields": {
+      "numero_empleado": "SG-0129",
+      "nombre": "Carmen Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 132,
+    "fields": {
+      "numero_empleado": "SG-0130",
+      "nombre": "Manuel Torres",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 133,
+    "fields": {
+      "numero_empleado": "SG-0131",
+      "nombre": "Alejandro Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 134,
+    "fields": {
+      "numero_empleado": "SG-0132",
+      "nombre": "Javier Medina",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 135,
+    "fields": {
+      "numero_empleado": "SG-0133",
+      "nombre": "Alejandro Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 136,
+    "fields": {
+      "numero_empleado": "SG-0134",
+      "nombre": "Daniel Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 137,
+    "fields": {
+      "numero_empleado": "SG-0135",
+      "nombre": "Héctor González",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 138,
+    "fields": {
+      "numero_empleado": "SG-0136",
+      "nombre": "Javier Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 139,
+    "fields": {
+      "numero_empleado": "SG-0137",
+      "nombre": "Verónica Medina",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 140,
+    "fields": {
+      "numero_empleado": "SG-0138",
+      "nombre": "Ana Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 141,
+    "fields": {
+      "numero_empleado": "SG-0139",
+      "nombre": "Patricia Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 142,
+    "fields": {
+      "numero_empleado": "SG-0140",
+      "nombre": "Carmen Martínez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 143,
+    "fields": {
+      "numero_empleado": "SG-0141",
+      "nombre": "Norma Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 144,
+    "fields": {
+      "numero_empleado": "SG-0142",
+      "nombre": "Adriana Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 145,
+    "fields": {
+      "numero_empleado": "SG-0143",
+      "nombre": "Alejandro Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 146,
+    "fields": {
+      "numero_empleado": "SG-0144",
+      "nombre": "Ana Ramírez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 147,
+    "fields": {
+      "numero_empleado": "SG-0145",
+      "nombre": "Verónica Morales",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 148,
+    "fields": {
+      "numero_empleado": "SG-0146",
+      "nombre": "Mónica Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 149,
+    "fields": {
+      "numero_empleado": "SG-0147",
+      "nombre": "Mónica Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 150,
+    "fields": {
+      "numero_empleado": "SG-0148",
+      "nombre": "Silvia Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 151,
+    "fields": {
+      "numero_empleado": "SG-0149",
+      "nombre": "Javier Torres",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 152,
+    "fields": {
+      "numero_empleado": "SG-0150",
+      "nombre": "Jorge Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 153,
+    "fields": {
+      "numero_empleado": "SG-0151",
+      "nombre": "Verónica Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 154,
+    "fields": {
+      "numero_empleado": "SG-0152",
+      "nombre": "Héctor Gómez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 155,
+    "fields": {
+      "numero_empleado": "SG-0153",
+      "nombre": "Ricardo Núñez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 156,
+    "fields": {
+      "numero_empleado": "SG-0154",
+      "nombre": "Manuel Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 157,
+    "fields": {
+      "numero_empleado": "SG-0155",
+      "nombre": "Patricia Martínez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 158,
+    "fields": {
+      "numero_empleado": "SG-0156",
+      "nombre": "Elena Vázquez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 159,
+    "fields": {
+      "numero_empleado": "SG-0157",
+      "nombre": "Luis Vázquez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 160,
+    "fields": {
+      "numero_empleado": "SG-0158",
+      "nombre": "Luis Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 161,
+    "fields": {
+      "numero_empleado": "SG-0159",
+      "nombre": "Sergio Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 162,
+    "fields": {
+      "numero_empleado": "SG-0160",
+      "nombre": "Adriana Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 163,
+    "fields": {
+      "numero_empleado": "SG-0161",
+      "nombre": "Manuel Aguilar",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 164,
+    "fields": {
+      "numero_empleado": "SG-0162",
+      "nombre": "Ana Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 165,
+    "fields": {
+      "numero_empleado": "SG-0163",
+      "nombre": "Adriana Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 166,
+    "fields": {
+      "numero_empleado": "SG-0164",
+      "nombre": "Elena Medina",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 167,
+    "fields": {
+      "numero_empleado": "SG-0165",
+      "nombre": "Lorena Reyes",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 168,
+    "fields": {
+      "numero_empleado": "SG-0166",
+      "nombre": "Lorena Pérez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 169,
+    "fields": {
+      "numero_empleado": "SG-0167",
+      "nombre": "Miguel Ortega",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 170,
+    "fields": {
+      "numero_empleado": "SG-0168",
+      "nombre": "Sergio Torres",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 171,
+    "fields": {
+      "numero_empleado": "SG-0169",
+      "nombre": "Patricia Ibarra",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 172,
+    "fields": {
+      "numero_empleado": "SG-0170",
+      "nombre": "Héctor Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 173,
+    "fields": {
+      "numero_empleado": "SG-0171",
+      "nombre": "Héctor Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 174,
+    "fields": {
+      "numero_empleado": "SG-0172",
+      "nombre": "Daniel Torres",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 175,
+    "fields": {
+      "numero_empleado": "SG-0173",
+      "nombre": "Raúl Torres",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 176,
+    "fields": {
+      "numero_empleado": "SG-0174",
+      "nombre": "Óscar Rojas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 177,
+    "fields": {
+      "numero_empleado": "SG-0175",
+      "nombre": "Norma Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 178,
+    "fields": {
+      "numero_empleado": "SG-0176",
+      "nombre": "Miguel López",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 179,
+    "fields": {
+      "numero_empleado": "SG-0177",
+      "nombre": "Gabriela Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 180,
+    "fields": {
+      "numero_empleado": "SG-0178",
+      "nombre": "Sofía Silva",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 181,
+    "fields": {
+      "numero_empleado": "SG-0179",
+      "nombre": "Rosa Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 182,
+    "fields": {
+      "numero_empleado": "SG-0180",
+      "nombre": "Elena Núñez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 183,
+    "fields": {
+      "numero_empleado": "SG-0181",
+      "nombre": "Ana Soto",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 184,
+    "fields": {
+      "numero_empleado": "SG-0182",
+      "nombre": "Lorena Cruz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 185,
+    "fields": {
+      "numero_empleado": "SG-0183",
+      "nombre": "Adriana López",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 186,
+    "fields": {
+      "numero_empleado": "SG-0184",
+      "nombre": "Javier Silva",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 187,
+    "fields": {
+      "numero_empleado": "SG-0185",
+      "nombre": "Sergio Campos",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 188,
+    "fields": {
+      "numero_empleado": "SG-0186",
+      "nombre": "Ana Hernández",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 189,
+    "fields": {
+      "numero_empleado": "SG-0187",
+      "nombre": "Raúl Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 190,
+    "fields": {
+      "numero_empleado": "SG-0188",
+      "nombre": "Javier Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 191,
+    "fields": {
+      "numero_empleado": "SG-0189",
+      "nombre": "Elena Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 192,
+    "fields": {
+      "numero_empleado": "SG-0190",
+      "nombre": "Ricardo Mendoza",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 193,
+    "fields": {
+      "numero_empleado": "SG-0191",
+      "nombre": "Teresa Sánchez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 194,
+    "fields": {
+      "numero_empleado": "SG-0192",
+      "nombre": "Francisco Vargas",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 195,
+    "fields": {
+      "numero_empleado": "SG-0193",
+      "nombre": "Silvia García",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 196,
+    "fields": {
+      "numero_empleado": "SG-0194",
+      "nombre": "Silvia Ibarra",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 197,
+    "fields": {
+      "numero_empleado": "SG-0195",
+      "nombre": "Manuel Jiménez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 198,
+    "fields": {
+      "numero_empleado": "SG-0196",
+      "nombre": "Jorge Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 199,
+    "fields": {
+      "numero_empleado": "SG-0197",
+      "nombre": "Javier Ibarra",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 200,
+    "fields": {
+      "numero_empleado": "SG-0198",
+      "nombre": "Rosa Flores",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 201,
+    "fields": {
+      "numero_empleado": "SG-0199",
+      "nombre": "Miguel Díaz",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "personal.empleado",
+    "pk": 202,
+    "fields": {
+      "numero_empleado": "SG-0200",
+      "nombre": "Manuel Martínez",
+      "activo": true,
+      "fecha_creacion": "2024-01-01T00:00:00Z"
+    }
+  }
+]
