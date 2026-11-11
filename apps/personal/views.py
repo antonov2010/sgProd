@@ -59,38 +59,33 @@ def logout_empleado(request):
 def matriz_competencias(request):
     empleado_id = request.session.get("empleado_id")
     jefe = Empleado.objects.filter(id=empleado_id).first()
+    
     linea_actual = jefe.linea if (jefe and jefe.linea) else Linea.objects.first()
-
     if not linea_actual:
-        return render(
-            request,
-            "matriz.html",
-            {"linea": None, "estaciones": [], "matriz": [], "sugerencia": None},
-        )
+        return render(request, "matriz.html", {"linea": None, "estaciones": [], "matriz": []})
 
-    # 1. GUARDAR LA NUEVA ASIGNACIÓN VIGENTE (POST)
+    # 1. Procesar guardado de asignación (POST)
     if request.method == "POST" and "guardar_asignacion" in request.POST:
         asignaciones_guardadas = {}
         for key, val in request.POST.items():
             if key.startswith("estacion_"):
                 estacion_id = key.replace("estacion_", "")
                 asignaciones_guardadas[estacion_id] = val if val else None
-
-        # Persistir en la sesión (o en el modelo correspondiente)
+        
         request.session[f"asignacion_vigente_{linea_actual.id}"] = asignaciones_guardadas
         messages.success(request, "¡Asignación vigente actualizada correctamente!")
         return redirect("personal:matriz_competencias")
 
+    # 2. Consultar datos
     estaciones = Estacion.objects.filter(linea=linea_actual).order_by("orden")
     empleados = Empleado.objects.filter(
         linea=linea_actual, activo=True, rol__tipo_rol__iexact="operador"
     ).order_by("nombre")
-
-    habilidades = SkillMatrix.objects.filter(
-        empleado__in=empleados, estacion__in=estaciones
-    )
+    
+    habilidades = SkillMatrix.objects.filter(empleado__in=empleados, estacion__in=estaciones)
     mapa_habilidades = {(h.empleado_id, h.estacion_id): h.nivel for h in habilidades}
 
+    # 3. Construir Matriz General
     matriz = []
     for emp in empleados:
         fila_niveles = []
@@ -99,21 +94,57 @@ def matriz_competencias(request):
             fila_niveles.append({"estacion_id": est.id, "nivel": nivel})
         matriz.append({"empleado": emp, "niveles": fila_niveles})
 
-    # 2. CONSTRUIR TABLA 1: ASIGNACIÓN VIGENTE OFICIAL (SIEMPRE ESTÁTICA)
+    # 4. Construir Mapa de Instructores por Estación (para US-09)
+    instructores_por_estacion = {}
+    for est in estaciones:
+        instructores = [
+            h.empleado for h in habilidades 
+            if h.estacion_id == est.id and h.nivel == "Instructor"
+        ]
+        instructores_por_estacion[est.id] = instructores
+
+    # 5. CONSTRUIR TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA
     asignacion_session = request.session.get(f"asignacion_vigente_{linea_actual.id}", {})
     tabla_vigente_estatica = []
+    
     for est in estaciones:
         emp_id = asignacion_session.get(str(est.id))
         emp_obj = empleados.filter(id=emp_id).first() if emp_id else None
+        
+        nivel = mapa_habilidades.get((emp_obj.id, est.id)) if emp_obj else None
+        # Ahora se activa alerta/instructor para Principiante y Sin Nivel:
+        es_principiante = (nivel == "Principiante" or not nivel)
+        
+        instructores = instructores_por_estacion.get(est.id, [])
+        instructor_apoyo = instructores[0] if (es_principiante and instructores) else None
+        
         tabla_vigente_estatica.append({
             "estacion": est,
-            "empleado_asignado": emp_obj
+            "empleado_asignado": emp_obj,
+            "nivel": nivel,
+            "es_principiante": es_principiante,
+            "instructor_apoyo": instructor_apoyo
         })
 
-    # 3. CONSTRUIR TABLA 2: SUGERENCIA DEL MOTOR RF-1.3 (SOLO CUANDO ?sugerir=1)
+    # 6. CONSTRUIR TABLA 2: SUGERENCIA DE DISTRIBUCIÓN
     sugerencia_propuesta = None
     if request.GET.get("sugerir") == "1":
         sugerencia_propuesta = generar_sugerencia_turno(linea_actual)
+        
+        for item in sugerencia_propuesta["asignaciones"]:
+            emp = item.get("empleado")
+            est = item["estacion"]
+            
+            nivel = mapa_habilidades.get((emp.id, est.id)) if emp else None
+            item["nivel"] = nivel
+            # Evaluamos si requiere apoyo (Principiante o Sin Nivel)
+            item["es_principiante"] = (nivel == "Principiante" or not nivel)
+            
+            instructores = instructores_por_estacion.get(est.id, [])
+            item["instructor_apoyo"] = instructores[0] if (item["es_principiante"] and instructores) else None
+
+    # Mapa de habilidades en formato JSON para reactividad dinámica en JS
+    mapa_niveles_json = json.dumps({f"{h.empleado_id}_{h.estacion_id}": h.nivel for h in habilidades})
 
     return render(
         request,
@@ -125,6 +156,7 @@ def matriz_competencias(request):
             "tabla_vigente_estatica": tabla_vigente_estatica,
             "sugerencia_propuesta": sugerencia_propuesta,
             "todos_los_operadores": empleados,
+            "mapa_niveles_json": mapa_niveles_json,
         },
     )
 
