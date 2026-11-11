@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Sugerencia de Asignación · SG-Prod{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <header class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <p class="text-uppercase text-muted mb-1" style="font-size: 0.8rem; font-weight: 700;">RF-1.3 · Asignación Inteligente</p>
+            <h1>Sugerencia de Distribución — {{ linea.nombre }}</h1>
+            <p class="text-muted">Revisa la propuesta del sistema o realiza ajustes manuales antes de confirmar.</p>
+        </div>
+        <a href="{% url 'dashboard:pantalla_jefe' %}" class="btn btn-outline-secondary">← Volver al Tablero</a>
+    </header>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Estaciones de la Línea</h5>
+                <button type="submit" class="btn btn-success font-weight-bold">✓ Confirmar y Guardar Asignación</button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Estación</th>
+                            <th>Estado / Propuesta del Sistema</th>
+                            <th>Asignación Final (Ajuste Manual)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in asignaciones %}
+                            <tr {% if item.descubierta %}class="table-warning"{% endif %}>
+                                <td>
+                                    <strong>{{ item.estacion.nombre }}</strong>
+                                </td>
+                                <td>
+                                    {% if item.descubierta %}
+                                        <span class="badge bg-danger">⚠️ Estación Descubierta</span>
+                                        <small class="text-muted d-block">Sin personal disponible con nivel suficiente</small>
+                                    {% else %}
+                                        <span class="badge bg-success">Sugerido:</span>
+                                        <strong>{{ item.empleado.nombre }} {{ item.empleado.apellido }}</strong>
+                                        <small class="text-muted">({{ item.empleado.numero_empleado }})</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <!-- Selector para permitir ajuste manual (Criterio 4) -->
+                                    <select name="estacion_{{ item.estacion.id }}" class="form-select form-select-sm">
+                                        <option value="">-- Dejar Descubierta --</option>
+                                        {% for op in todos_los_operadores %}
+                                            <option value="{{ op.id }}" 
+                                                {% if item.empleado and item.empleado.id == op.id %}selected{% endif %}>
+                                                {{ op.nombre }} {{ op.apellido }} ({{ op.numero_empleado }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
