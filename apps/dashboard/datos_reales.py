@@ -10,7 +10,7 @@ Modelos que usa (solo lectura, no se toca ninguno):
 """
 
 from apps.calidad.models import RegistroCalidadHorario
-from apps.personal.models import Empleado, Linea
+from apps.personal.models import Empleado, Linea, SkillMatrix
 
 META_POR_DEFECTO = 100  # igual que MetaEstacion.piezas_por_hora_meta
 
@@ -60,16 +60,35 @@ def registros_reales(fecha=None):
 
 
 def personal_real():
-    """{línea: {"jefe": nombre, "operadores": [nombres]}} con gente activa."""
+    """{línea: {"jefe": nombre, "operadores": [nombres]}} con gente activa.
+
+    Operadores de una línea = los que tienen esa línea asignada, más los que
+    figuran en la matriz de habilidades de alguna de sus estaciones (el seed
+    actual solo llena la matriz). El Jefe sale de Linea.jefe_linea o, si no
+    hay, de un empleado con rol jefe que tenga esa línea.
+    """
     personal = {}
     for linea in Linea.objects.select_related("jefe_linea").order_by("nombre"):
+        por_linea = Empleado.objects.filter(linea=linea)
+        por_matriz = Empleado.objects.filter(
+            id__in=SkillMatrix.objects.filter(estacion__linea=linea).values("empleado_id")
+        )
         operadores = (
-            Empleado.objects.filter(linea=linea, activo=True, rol__tipo_rol="operador")
+            (por_linea | por_matriz)
+            .filter(activo=True, rol__tipo_rol="operador")
+            .distinct()
             .order_by("nombre")
             .values_list("nombre", flat=True)
         )
+        jefe = linea.jefe_linea
+        if jefe is None:
+            jefe = (
+                Empleado.objects.filter(linea=linea, activo=True, rol__tipo_rol="jefe")
+                .order_by("nombre")
+                .first()
+            )
         personal[linea.nombre] = {
-            "jefe": linea.jefe_linea.nombre if linea.jefe_linea else "",
+            "jefe": jefe.nombre if jefe else "",
             "operadores": list(operadores),
         }
     return personal

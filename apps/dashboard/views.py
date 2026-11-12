@@ -1,5 +1,6 @@
 from django.shortcuts import render
 
+from .config_umbrales import umbrales_actuales
 from .datos_ejemplo import personal_ejemplo, registros_ejemplo
 from .datos_reales import personal_real, registros_reales
 from .tablero import construir_tablero
@@ -23,7 +24,7 @@ def pantalla_gerente(request):
         personal = personal_ejemplo()
     else:
         personal = personal_real()
-    tablero = construir_tablero(registros, personal)
+    tablero = construir_tablero(registros, personal, umbrales_actuales())
     return render(
         request,
         'dashboard/gerente.html',

@@ -6,7 +6,7 @@ from apps.calidad.models import Asignacion, RegistroCalidadHorario
 from apps.dashboard.datos_reales import personal_real, registros_reales
 from apps.dashboard.models import MetaEstacion
 from apps.dashboard.tablero import construir_tablero
-from apps.personal.models import Empleado, Estacion, Linea, Rol
+from apps.personal.models import Empleado, Estacion, Linea, Rol, SkillMatrix
 
 pytestmark = pytest.mark.django_db
 
@@ -72,3 +72,18 @@ def test_la_pantalla_usa_datos_reales_si_hay_captura(client, escenario):
     r = client.get("/dashboard/gerente/")
     assert r.context["tablero_es_ejemplo"] is False
     assert "Datos reales" in r.content.decode()
+
+
+def test_personal_real_toma_operadores_de_la_matriz_si_no_tienen_linea(escenario):
+    rol_op = Rol.objects.get(tipo_rol="operador")
+    sin_linea = Empleado.objects.create(numero_empleado="O3", nombre="Sofia Matriz", rol=rol_op)
+    SkillMatrix.objects.create(
+        empleado=sin_linea, estacion=Estacion.objects.get(nombre="Soldadura"), nivel="Experto"
+    )
+    assert personal_real()["Línea 3"]["operadores"] == ["Luis Operador", "Sofia Matriz"]
+
+
+def test_personal_real_sin_jefe_de_linea_no_falla(escenario):
+    Linea.objects.update(jefe_linea=None)
+    Empleado.objects.filter(numero_empleado="J1").update(linea=None)
+    assert personal_real()["Línea 3"]["jefe"] == ""
