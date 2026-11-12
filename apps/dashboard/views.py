@@ -1,6 +1,7 @@
 from django.shortcuts import render
 
 from .datos_ejemplo import personal_ejemplo, registros_ejemplo
+from .datos_reales import personal_real, registros_reales
 from .tablero import construir_tablero
 
 
@@ -13,8 +14,18 @@ def pantalla_jefe(request):
 
 
 def pantalla_gerente(request):
-    # PROVISIONAL (US-13): datos de ejemplo. Cuando existan los registros
-    # reales, solo se cambian registros_ejemplo() y personal_ejemplo() por
-    # las consultas reales; construir_tablero() y la plantilla siguen igual.
-    tablero = construir_tablero(registros_ejemplo(), personal_ejemplo())
-    return render(request, 'dashboard/gerente.html', {'tablero': tablero})
+    # US-13: usa los registros reales de calidad. Si todavía no hay captura
+    # horaria en la base, muestra datos de EJEMPLO con un aviso visible.
+    registros = registros_reales()
+    es_ejemplo = not registros
+    if es_ejemplo:
+        registros = registros_ejemplo()
+        personal = personal_ejemplo()
+    else:
+        personal = personal_real()
+    tablero = construir_tablero(registros, personal)
+    return render(
+        request,
+        'dashboard/gerente.html',
+        {'tablero': tablero, 'tablero_es_ejemplo': es_ejemplo},
+    )

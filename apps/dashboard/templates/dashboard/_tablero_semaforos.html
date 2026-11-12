@@ -66,7 +66,11 @@
 </style>
 
 <div class="tg">
-  <p class="tg-aviso">Datos de ejemplo: se conectarán a la captura horaria real cuando esté lista.</p>
+  {% if tablero_es_ejemplo %}
+  <p class="tg-aviso" role="status"><strong>Datos de ejemplo:</strong> todavía no hay captura horaria en la base de datos. Cuando se registren piezas, aquí aparecerán los datos reales.</p>
+  {% else %}
+  <p class="tg-aviso">Datos reales del último día con captura horaria.</p>
+  {% endif %}
 
   <section class="tg-kpis" aria-label="Indicadores de planta">
     {% for k in tablero.kpis %}
