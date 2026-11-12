@@ -1,4 +1,4 @@
-"""Pantallas de calidad: captura horaria por estación (US-11, RF-2.1)."""
+"""Pantallas de calidad: captura horaria por estación (US-11, RF-2.1, RF-2.2)."""
 
 import json
 import time
@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 from apps.personal.models import Empleado
 
 from . import services
+from .models import CatalogoDefecto
 
 
 def jefe_de_linea_requerido(vista):
@@ -71,6 +72,7 @@ def captura_horaria(request):
             "filas": filas,
             "sin_asignar": sum(1 for f in filas if f.asignacion is None),
             "historial": services.historial_del_turno(linea, turno),
+            "catalogo_defectos": CatalogoDefecto.objects.order_by("codigo"),
         },
     )
 
@@ -95,9 +97,12 @@ def guardar_captura(request):
             datos.get("aceptadas"),
             datos.get("rechazadas"),
             datos.get("retrabajo"),
+            defecto_id=datos.get("defecto_id"),
         )
     except services.CapturaInvalida as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+    primer_defecto = registro.defectos.select_related("defecto").first()
 
     return JsonResponse(
         {
@@ -111,6 +116,7 @@ def guardar_captura(request):
                 "aceptadas": registro.piezas_aceptadas,
                 "rechazadas": registro.piezas_rechazadas,
                 "retrabajo": registro.piezas_retrabajo,
+                "defecto": str(primer_defecto.defecto) if primer_defecto else "—",
             },
             "ms": round((time.perf_counter() - inicio) * 1000),
         },

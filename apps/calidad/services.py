@@ -1,4 +1,4 @@
-"""Reglas de negocio de la captura horaria (US-11, RF-2.1).
+"""Reglas de negocio de la captura horaria (US-11, RF-2.1, RF-2.2).
 
 La lógica vive aquí y no en las vistas (RNF-3): la pantalla de tableta y una
 futura ingesta por API (ERP/MES) deben aplicar las mismas validaciones.
@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.personal.models import Estacion, Linea, NivelHabilidad, SkillMatrix
 from apps.personal.services import obtener_personal_presente
 
-from .models import Asignacion, RegistroCalidadHorario
+from .models import Asignacion, CatalogoDefecto, DetalleDefecto, RegistroCalidadHorario
 
 # Turnos de planta: (primera hora, número de horas). El turno 3 cruza la medianoche.
 TURNOS = {
@@ -26,7 +26,7 @@ MAX_PIEZAS_POR_HORA = 9999
 
 
 class CapturaInvalida(ValueError):
-    """Los datos de la captura no cumplen las reglas de RF-2.1."""
+    """Los datos de la captura no cumplen las reglas de RF-2.1 / RF-2.2."""
 
 
 @dataclass
@@ -37,6 +37,7 @@ class EstacionDelTurno:
     asignacion: Asignacion | None
     nivel: str | None
     registro: RegistroCalidadHorario | None
+    defecto_id: int | None = None
 
     @property
     def requiere_apoyo(self):
@@ -68,21 +69,10 @@ def linea_del_jefe(jefe):
 
 
 def asignaciones_del_turno(linea, turno, asignacion_vigente=None, fecha=None):
-    """Asignaciones de la línea para el turno, una por estación.
-
-    Mientras la asignación vigente de RF-1.3 viva en la sesión del jefe, este
-    paso la convierte en filas de ``Asignacion``: la captura necesita un
-    registro en base de datos al cual colgar las piezas. Si la estación ya tiene
-    asignación pero todavía no tiene piezas capturadas, se actualiza al operador
-    vigente; si ya tiene piezas, se conserva para no reescribir el historial.
-
-    ``asignacion_vigente`` es el diccionario que guarda la matriz en sesión:
-    ``{"<estacion_id>": "<empleado_id>" | None}``.
-    """
+    """Asignaciones de la línea para el turno, una por estación."""
     fecha = fecha or timezone.localdate()
     asignacion_vigente = asignacion_vigente or {}
     estaciones = list(Estacion.objects.filter(linea=linea).order_by("orden"))
-    # Solo personal presente (hook de asistencia RF-1.4): hoy, todo el activo.
     operadores = {e.id: e for e in obtener_personal_presente(linea)}
 
     existentes = {
@@ -119,7 +109,6 @@ def asignaciones_del_turno(linea, turno, asignacion_vigente=None, fecha=None):
                 empleado_id__in=[a.empleado_id for a in resultado.values() if a],
             ).values_list("empleado_id", "estacion_id", "nivel")
         }
-        # La alerta de supervisión queda registrada en la asignación (US-09).
         for asignacion in resultado.values():
             if asignacion is None:
                 continue
@@ -143,17 +132,20 @@ def estaciones_para_capturar(linea, turno, hora, asignacion_vigente=None, fecha=
         r.asignacion_id: r
         for r in RegistroCalidadHorario.objects.filter(
             asignacion__in=[a for a in asignaciones.values() if a], hora=hora
-        )
+        ).prefetch_related("defectos")
     }
     filas = []
     for estacion in estaciones:
         asignacion = asignaciones[estacion.id]
+        registro = registros.get(asignacion.id) if asignacion else None
+        primer_defecto = registro.defectos.first() if registro else None
         filas.append(
             EstacionDelTurno(
                 estacion=estacion,
                 asignacion=asignacion,
                 nivel=niveles.get((asignacion.empleado_id, estacion.id)) if asignacion else None,
-                registro=registros.get(asignacion.id) if asignacion else None,
+                registro=registro,
+                defecto_id=primer_defecto.defecto_id if primer_defecto else None,
             )
         )
     return filas
@@ -168,7 +160,9 @@ def historial_del_turno(linea, turno, fecha=None):
             asignacion__estacion__linea=linea,
             asignacion__fecha=fecha,
             asignacion__turno=turno,
-        ).select_related("asignacion__estacion", "asignacion__empleado")
+        )
+        .select_related("asignacion__estacion", "asignacion__empleado")
+        .prefetch_related("defectos__defecto")
     )
     registros.sort(
         key=lambda r: (-orden_hora.get(r.hora, -1), r.asignacion.estacion.orden)
@@ -188,15 +182,10 @@ def _piezas(valor, campo):
     return piezas
 
 
-def registrar_captura(linea, asignacion_id, hora, aceptadas, rechazadas, retrabajo, fecha=None):
-    """Guarda (o corrige) las piezas de una estación en una hora del turno.
-
-    Un mismo par asignación + hora tiene un solo registro: volver a guardar la
-    misma hora corrige los valores en lugar de duplicarlos.
-
-    Lanza ``CapturaInvalida`` si los datos no son válidos o la asignación no
-    pertenece a la línea del jefe ni al día en curso.
-    """
+def registrar_captura(
+    linea, asignacion_id, hora, aceptadas, rechazadas, retrabajo, defecto_id=None, fecha=None
+):
+    """Guarda (o corrige) las piezas de una estación en una hora del turno."""
     fecha = fecha or timezone.localdate()
     valores = {
         "piezas_aceptadas": _piezas(aceptadas, "Aceptadas"),
@@ -207,6 +196,15 @@ def registrar_captura(linea, asignacion_id, hora, aceptadas, rechazadas, retraba
         hora = int(hora)
     except (TypeError, ValueError):
         raise CapturaInvalida("Hora no válida.") from None
+
+    # Validación RF-2.2: motivo obligatorio si rechazadas > 0
+    defecto = None
+    if valores["piezas_rechazadas"] > 0:
+        if not defecto_id:
+            raise CapturaInvalida("Selecciona un motivo de defecto cuando haya piezas rechazadas.")
+        defecto = CatalogoDefecto.objects.filter(pk=defecto_id).first()
+        if defecto is None:
+            raise CapturaInvalida("El motivo de defecto seleccionado no es válido.")
 
     asignacion = (
         Asignacion.objects.filter(pk=asignacion_id, estacion__linea=linea, fecha=fecha)
@@ -233,4 +231,14 @@ def registrar_captura(linea, asignacion_id, hora, aceptadas, rechazadas, retraba
             for campo, valor in valores.items():
                 setattr(registro, campo, valor)
             registro.save(update_fields=list(valores))
+
+        # Sincronizar el motivo de defecto asociado a la estación y al empleado
+        registro.defectos.all().delete()
+        if defecto is not None:
+            DetalleDefecto.objects.create(
+                registro=registro,
+                defecto=defecto,
+                cantidad=valores["piezas_rechazadas"],
+            )
+
     return registro, creado
