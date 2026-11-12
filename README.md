@@ -266,6 +266,33 @@ prueba y los criterios de aceptación) está en la
 corrección US-06 en la UI, con los conteos esperados por línea, está en la
 [§8 de esa misma guía](docs/02_guia_pruebas_us05.md).
 
+### 5.4 Captura horaria por estación (US-11)
+
+El Jefe de Línea registra cada hora las piezas **Aceptadas**, **Rechazadas** y
+**Retrabajo** de cada estación de su línea, desde la tableta de planta:
+
+1. Entra con su número y PIN (por ejemplo `SG-0002` / `123456`).
+2. En la **Matriz de Competencias**, pide la sugerencia y confirma la
+   asignación vigente. Sin este paso, las estaciones aparecen *sin operador*.
+3. En el tablero de turno, pulsa **Capturar la hora →** (`/calidad/captura/`).
+4. Elige la hora (por defecto, la actual), ajusta las piezas con − / + o
+   escribiendo el número, y pulsa **Guardar** en cada estación o
+   **Guardar todas las estaciones**.
+
+Reglas:
+
+- Turnos: 1 = 06:00–13:59, 2 = 14:00–21:59, 3 = 22:00–05:59.
+- Guardar otra vez la misma hora **corrige** el registro; no lo duplica.
+- Solo se capturan estaciones de la línea del jefe y horas del turno en curso.
+- Al abrir la captura, la asignación vigente de la matriz se guarda como
+  `Asignacion` del día y turno (con `alerta_supervision` si el operador es
+  Principiante o no tiene nivel). Una estación que ya tiene piezas capturadas
+  conserva a su operador.
+- Los registros guardados aparecen en **Registros del turno**, al pie de la
+  pantalla, y en el Admin (*Calidad → Registros de calidad horario*).
+
+El motivo de defecto obligatorio cuando hay Rechazadas se agrega en US-12.
+
 ---
 
 ## 6. Día a día
