@@ -1,0 +1,216 @@
+{# Tablero At-a-Glance (US-13). Se incluye desde gerente.html. #}
+{# Datos de ejemplo hasta conectar los registros reales. #}
+<style>
+  .tg { --tg-ok: var(--sg-ok, #1E8E4E); --tg-warn: var(--sg-warn, #C98A00); --tg-bad: var(--sg-bad, #C8322B);
+        --tg-line: var(--sg-line, rgba(128,128,128,.35)); --tg-card: var(--sg-card, transparent);
+        --tg-muted: var(--sg-muted, rgba(128,128,128,.95)); --tg-focus: var(--sg-thread, #F2B705);
+        margin-bottom: 1.5rem; }
+  .tg * { box-sizing: border-box; }
+  .tg h3 { margin: 0; }
+  .tg-aviso { margin: 0 0 1rem; color: var(--tg-muted); font-size: .95rem; }
+  .tg-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+  .tg-card { background: var(--tg-card); border: 1px solid var(--tg-line); border-radius: 10px; padding: 1rem 1.15rem; }
+  .tg-kpi { border-left: 8px solid var(--tg-line); }
+  .tg-kpi.is-ok, .tg-linea.is-ok { border-left-color: var(--tg-ok); }
+  .tg-kpi.is-warn, .tg-linea.is-warn { border-left-color: var(--tg-warn); }
+  .tg-kpi.is-bad, .tg-linea.is-bad { border-left-color: var(--tg-bad); }
+  .tg-kpi small { display: block; color: var(--tg-muted); }
+  .tg-valor { display: block; margin: .15rem 0; font-size: 2.2rem; font-weight: 700; line-height: 1.1; }
+  .tg-cab { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
+  .tg-badge { display: inline-block; padding: .1rem .65rem; border-radius: 999px; font-size: .85rem; font-weight: 700;
+              border: 1.5px solid currentColor; white-space: nowrap; }
+  .tg-badge.is-ok { color: var(--tg-ok); } .tg-badge.is-warn { color: var(--tg-warn); }
+  .tg-badge.is-bad { color: var(--tg-bad); } .tg-badge.is-none { color: var(--tg-muted); }
+  .tg-sec { margin: 1.5rem 0 .25rem; font-size: 1.25rem; }
+  .tg-ayuda { margin: 0 0 .75rem; color: var(--tg-muted); font-size: .95rem; }
+  .tg-lineas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
+  .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column; }
+  .tg-linea.is-activa { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+  .tg-resumen { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .25rem 0 .5rem; }
+  .tg-resumen strong { font-size: 1.6rem; }
+  .tg-spark { width: 160px; height: 44px; flex: none; }
+  .tg-personal { margin: 0 0 .6rem; padding: .55rem 0; border-top: 1px solid var(--tg-line); font-size: .92rem; }
+  .tg-personal b { font-weight: 700; }
+  .tg-nombres { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+  .tg-nombres span { padding: .05rem .55rem; border: 1px solid var(--tg-line); border-radius: 999px; font-size: .82rem; }
+  .tg-nombres .mas { color: var(--tg-muted); border-style: dashed; }
+  .tg-estaciones { list-style: none; margin: 0 0 .75rem; padding: 0; }
+  .tg-estaciones li { display: flex; align-items: center; gap: .6rem; padding: .4rem 0; border-top: 1px solid var(--tg-line); }
+  .tg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .tg-dot.is-ok { background: var(--tg-ok); } .tg-dot.is-warn { background: var(--tg-warn); }
+  .tg-dot.is-bad { background: var(--tg-bad); } .tg-dot.is-none { background: var(--tg-muted); }
+  .tg-estaciones .n { flex: 1; min-width: 0; }
+  .tg-estaciones .v { font-weight: 700; white-space: nowrap; }
+  .tg-estaciones .e { min-width: 5.2rem; white-space: nowrap; text-align: right; color: var(--tg-muted); font-size: .9rem; }
+  .tg-ver { margin-top: auto; min-height: 48px; width: 100%; border: 2px solid var(--tg-focus); border-radius: 10px;
+            background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+  .tg-ver:hover, .tg-linea.is-activa .tg-ver { background: var(--tg-focus); color: #16222E; }
+  .tg-ver:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+  .tg-grafica { width: 100%; height: auto; display: block; }
+  .tg-grafica text { fill: currentColor; font-size: 12px; }
+  .tg-leyenda { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .5rem; color: var(--tg-muted); font-size: .9rem; }
+  .tg-leyenda span { display: inline-flex; align-items: center; gap: .4rem; }
+  .tg-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .tg-dos h3 { margin-bottom: .15rem; }
+  .tg-fila { padding: .6rem 0; border-top: 1px solid var(--tg-line); }
+  .tg-fila-cab { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .3rem; }
+  .tg-fila-cab small { color: var(--tg-muted); display: block; }
+  .tg-barra { position: relative; height: 12px; border-radius: 6px; background: var(--tg-line); overflow: visible; }
+  .tg-barra i { display: block; height: 100%; border-radius: 6px; background: var(--tg-muted); }
+  .tg-barra i.is-ok { background: var(--tg-ok); } .tg-barra i.is-warn { background: var(--tg-warn); }
+  .tg-barra i.is-bad { background: var(--tg-bad); }
+  .tg-marca { position: absolute; top: -4px; bottom: -4px; width: 2px; background: currentColor; opacity: .7; }
+  .tg-nota { margin: .5rem 0 0; color: var(--tg-muted); font-size: .88rem; }
+  .tg-panel[hidden] { display: none; }
+  .tg-panel h3 { margin-bottom: .5rem; }
+</style>
+
+<div class="tg">
+  {% if tablero_es_ejemplo %}
+  <p class="tg-aviso" role="status"><strong>Datos de ejemplo:</strong> todavía no hay captura horaria en la base de datos. Cuando se registren piezas, aquí aparecerán los datos reales.</p>
+  {% else %}
+  <p class="tg-aviso">Datos reales del último día con captura horaria.</p>
+  {% endif %}
+
+  <section class="tg-kpis" aria-label="Indicadores de planta">
+    {% for k in tablero.kpis %}
+    <article class="tg-card tg-kpi is-{{ k.estado }}">
+      <div class="tg-cab">
+        <h3>{{ k.nombre }}</h3>
+        <span class="tg-badge is-{{ k.estado }}">{{ k.etiqueta }}</span>
+      </div>
+      <span class="tg-valor">{{ k.valor }}</span>
+      <small>{{ k.objetivo }}</small>
+    </article>
+    {% endfor %}
+  </section>
+
+  <h2 class="tg-sec">Líneas de producción</h2>
+  <p class="tg-ayuda">El color de cada línea es el de su peor estación. Toca «Ver tendencia» para ver su gráfica hora por hora.</p>
+  <section class="tg-lineas" aria-label="Estado por línea y estación">
+    {% for l in tablero.lineas %}
+    <article class="tg-card tg-linea is-{{ l.estado }}{% if l.id == tablero.activa %} is-activa{% endif %}" data-linea="{{ l.id }}">
+      <div class="tg-cab">
+        <h3>{{ l.nombre }}</h3>
+        <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
+      </div>
+      <div class="tg-resumen">
+        <div><strong>{{ l.fpy }}</strong><br><small>FPY de la línea</small></div>
+        <svg class="tg-spark" viewBox="0 0 160 44" role="img" aria-label="Tendencia hora por hora de {{ l.nombre }}">
+          <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      {% if l.personal.jefe or l.personal.total %}
+      <div class="tg-personal">
+        {% if l.personal.jefe %}<div>Jefe de línea: <b>{{ l.personal.jefe }}</b></div>{% endif %}
+        <div>En línea: <b>{{ l.personal.total }}</b> operadores</div>
+        <div class="tg-nombres">
+          {% for n in l.personal.visibles %}<span>{{ n }}</span>{% endfor %}
+          {% if l.personal.mas %}<span class="mas">+{{ l.personal.mas }} más</span>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      <ul class="tg-estaciones">
+        {% for e in l.estaciones %}
+        <li>
+          <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
+          <span class="n">{{ e.nombre }}</span>
+          <span class="v">{{ e.fpy }}</span>
+          <span class="e">{{ e.etiqueta }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <button type="button" class="tg-ver" data-panel="g-{{ l.id }}" aria-controls="g-{{ l.id }}"
+              aria-expanded="{% if l.id == tablero.activa %}true{% else %}false{% endif %}">Ver tendencia</button>
+    </article>
+    {% endfor %}
+  </section>
+
+  <h2 class="tg-sec">Tendencia hora por hora</h2>
+  {% for l in tablero.lineas %}
+  {% with t=l.grafica %}
+  <article class="tg-card tg-panel" id="g-{{ l.id }}" {% if l.id != tablero.activa %}hidden{% endif %}>
+    <h3>{{ l.nombre }} · FPY por hora</h3>
+    <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
+         aria-label="FPY de {{ l.nombre }} por hora: {{ t.resumen }}">
+      {% for g in t.guias %}
+      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
+      <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+      {% endfor %}
+      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      {% for p in t.puntos %}
+      <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card, #fff)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
+      {% endfor %}
+      {% for h in t.horas %}
+      <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
+      {% endfor %}
+    </svg>
+    <div class="tg-leyenda">
+      <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
+      <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
+      <span><i class="tg-dot is-bad"></i> Rojo: menos de {{ t.amarillo }}</span>
+    </div>
+  </article>
+  {% endwith %}
+  {% endfor %}
+
+  <div class="tg-dos">
+    <article class="tg-card" aria-label="Piezas por hora contra la meta">
+      <h3>Piezas por hora vs meta</h3>
+      <p class="tg-ayuda">Promedio de piezas buenas por hora y por estación. La marca vertical es la meta.</p>
+      {% for l in tablero.lineas %}{% if l.piezas %}
+      <div class="tg-fila">
+        <div class="tg-fila-cab">
+          <span><b>{{ l.nombre }}</b><small>{{ l.piezas.valor }} de {{ l.piezas.meta }} piezas/hora</small></span>
+          <span><b>{{ l.piezas.cumplimiento }}</b> <span class="tg-badge is-{{ l.piezas.estado }}">{{ l.piezas.etiqueta }}</span></span>
+        </div>
+        <div class="tg-barra" role="img" aria-label="{{ l.nombre }}: {{ l.piezas.cumplimiento }} de la meta">
+          <i class="is-{{ l.piezas.estado }}" style="width: {{ l.piezas.ancho }}%"></i>
+          <span class="tg-marca" style="left: {{ l.piezas.marca }}%"></span>
+        </div>
+      </div>
+      {% endif %}{% endfor %}
+    </article>
+
+    <article class="tg-card" aria-label="Tasa de defectos por empleado">
+      <h3>Tasa de defectos por empleado</h3>
+      <p class="tg-ayuda">Los empleados con más piezas rechazadas, para dirigir la capacitación.</p>
+      {% for e in tablero.empleados %}
+      <div class="tg-fila">
+        <div class="tg-fila-cab">
+          <span><b>{{ e.nombre }}</b><small>{{ e.donde }} · {{ e.rechazadas }} rechazadas</small></span>
+          <span><b>{{ e.tasa }}</b> <span class="tg-badge is-{{ e.estado }}">{{ e.etiqueta }}</span></span>
+        </div>
+        <div class="tg-barra" role="img" aria-label="{{ e.nombre }}: {{ e.tasa }} de defectos">
+          <i class="is-{{ e.estado }}" style="width: {{ e.ancho }}%"></i>
+        </div>
+      </div>
+      {% empty %}
+      <p class="tg-nota">Sin datos por empleado todavía.</p>
+      {% endfor %}
+    </article>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var raiz = document.currentScript.previousElementSibling;
+    if (!raiz) return;
+    var botones = raiz.querySelectorAll('.tg-ver');
+    var paneles = raiz.querySelectorAll('.tg-panel');
+    var tarjetas = raiz.querySelectorAll('.tg-linea');
+    botones.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var destino = document.getElementById(b.getAttribute('data-panel'));
+        paneles.forEach(function (p) { p.hidden = (p !== destino); });
+        tarjetas.forEach(function (t) { t.classList.remove('is-activa'); });
+        botones.forEach(function (x) { x.setAttribute('aria-expanded', 'false'); });
+        b.closest('.tg-linea').classList.add('is-activa');
+        b.setAttribute('aria-expanded', 'true');
+        destino.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
+  })();
+</script>
