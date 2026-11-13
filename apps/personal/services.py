@@ -29,7 +29,7 @@ def actualizar_nivel(empleado_id, estacion_id, nivel, linea=None):
         if estacion.linea_id != linea.id:
             raise NivelInvalido("La estación no pertenece a la línea autorizada.")
 
-    if not nivel:
+    if not nivel or nivel == NIVEL_SIN_ASIGNAR:
         SkillMatrix.objects.filter(empleado=empleado, estacion=estacion).delete()
         return None
 
