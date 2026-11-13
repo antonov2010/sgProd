@@ -17,3 +17,12 @@ media/
 postgresql/.env
 postgresql/db-data/
 postgresql/pgadmin-data/
+
+# Artefactos del gate local
+
+.github/artifacts/
+.github/agents/
+.github/skills/
+.github/scripts/
+.github/copilot-instructions.md
+.github/README.md
