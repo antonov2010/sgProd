@@ -69,7 +69,17 @@ def linea_del_jefe(jefe):
 
 
 def asignaciones_del_turno(linea, turno, asignacion_vigente=None, fecha=None):
-    """Asignaciones de la línea para el turno, una por estación."""
+    """Asignaciones de la línea para el turno, una por estación.
+
+    Mientras la asignación vigente de RF-1.3 viva en la sesión del jefe, este
+    paso la convierte en filas de ``Asignacion``: la captura necesita un
+    registro en base de datos al cual colgar las piezas. Si la estación ya tiene
+    asignación pero todavía no tiene piezas capturadas, se actualiza al operador
+    vigente; si ya tiene piezas, se conserva para no reescribir el historial.
+
+    ``asignacion_vigente`` es el diccionario que guarda la matriz en sesión:
+    ``{"<estacion_id>": "<empleado_id>" | None}``.
+    """
     fecha = fecha or timezone.localdate()
     asignacion_vigente = asignacion_vigente or {}
     estaciones = list(Estacion.objects.filter(linea=linea).order_by("orden"))
@@ -92,7 +102,7 @@ def asignaciones_del_turno(linea, turno, asignacion_vigente=None, fecha=None):
             if operador is not None:
                 if asignacion is None:
                     asignacion = Asignacion.objects.create(
-                        empleado=operador, estacion=estacion, turno=turno
+                        empleado=operador, estacion=estacion, fecha=fecha, turno=turno
                     )
                 elif (
                     asignacion.empleado_id != operador.id
