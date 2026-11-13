@@ -1,19 +1,23 @@
 from django.shortcuts import render
 
+from .accesos import rol_requerido
 from .config_umbrales import umbrales_actuales
 from .datos_ejemplo import personal_ejemplo, registros_ejemplo
 from .datos_reales import personal_real, registros_reales
 from .tablero import construir_tablero
 
 
+@rol_requerido('operador')
 def pantalla_operador(request):
     return render(request, 'dashboard/operador.html')
 
 
+@rol_requerido('jefe')
 def pantalla_jefe(request):
     return render(request, 'dashboard/jefe.html')
 
 
+@rol_requerido('gerente')
 def pantalla_gerente(request):
     # US-13: usa los registros reales de calidad. Si todavía no hay captura
     # horaria en la base, muestra datos de EJEMPLO con un aviso visible.
