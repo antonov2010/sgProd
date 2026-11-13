@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle Bono Cero Defectos · {{ detalle.nombre }} · SG-Prod{% endblock %}
+
+{% block nav_links %}
+  <a href="{% url 'dashboard:pantalla_gerente' %}">Tablero</a>
+  <a href="{% url 'personal:logout' %}">Cerrar sesión</a>
+{% endblock %}
+
+{% block content %}
+<header class="sg-page-head">
+  <div>
+    <p class="sg-eyebrow">Reconocimiento · Bono Cero Defectos</p>
+    <h1>{{ detalle.nombre }} ({{ detalle.numero_empleado }})</h1>
+    <p>
+      Registros de calidad que sustentan su elegibilidad del
+      <strong>{{ periodo.inicio }}</strong> al <strong>{{ periodo.fin }}</strong>.
+    </p>
+  </div>
+  <a href="{% url 'dashboard:pantalla_gerente' %}" class="sg-badge">← Volver al tablero</a>
+</header>
+
+<section class="sg-role-grid" aria-label="Resumen de desempeño en el periodo">
+  <article class="sg-card sg-role-card">
+    <p class="sg-eyebrow">Producción</p>
+    <h2>{{ detalle.aceptadas }} piezas</h2>
+    <p class="sg-muted sg-small">Total de piezas aceptadas sin rechazo.</p>
+  </article>
+
+  <article class="sg-card sg-role-card">
+    <p class="sg-eyebrow">Calidad</p>
+    <h2>0 defectos</h2>
+    <p class="sg-muted sg-small">Tasa de defectos: {{ detalle.tasa_defectos }} % · FPY: {{ detalle.fpy }} %.</p>
+  </article>
+
+  <article class="sg-card sg-role-card">
+    <p class="sg-eyebrow">Trazabilidad</p>
+    <h2>{{ detalle.total_registros }} registros</h2>
+    <p class="sg-muted sg-small">Capturas horarias evaluadas en el periodo.</p>
+  </article>
+</section>
+
+<article class="sg-card" style="margin-top: 1.25rem;">
+  <p class="sg-eyebrow">Evidencia horaria</p>
+  <h2>Registros que sustentan la elegibilidad</h2>
+
+  <div style="overflow-x: auto; margin-top: 0.75rem;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--sg-border, #e2e8f0); text-align: left;">
+          <th style="padding: 0.5rem;">Fecha</th>
+          <th style="padding: 0.5rem;">Turno</th>
+          <th style="padding: 0.5rem;">Línea</th>
+          <th style="padding: 0.5rem;">Estación</th>
+          <th style="padding: 0.5rem;">Hora</th>
+          <th style="padding: 0.5rem; text-align: right;">Aceptadas</th>
+          <th style="padding: 0.5rem; text-align: right;">Rechazadas</th>
+          <th style="padding: 0.5rem; text-align: right;">Retrabajo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in detalle.registros %}
+        <tr style="border-bottom: 1px solid var(--sg-border, #f1f5f9);">
+          <td style="padding: 0.5rem;">{{ r.fecha }}</td>
+          <td style="padding: 0.5rem;">{{ r.turno }}</td>
+          <td style="padding: 0.5rem;">{{ r.linea }}</td>
+          <td style="padding: 0.5rem;">{{ r.estacion }}</td>
+          <td style="padding: 0.5rem;">Hora {{ r.hora }}</td>
+          <td style="padding: 0.5rem; text-align: right;">{{ r.aceptadas }}</td>
+          <td style="padding: 0.5rem; text-align: right;">
+            <span class="sg-badge sg-badge--ok">{{ r.rechazadas }}</span>
+          </td>
+          <td style="padding: 0.5rem; text-align: right;">{{ r.retrabajo }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endblock %}
