@@ -8,9 +8,10 @@
 - 200 empleados: 1 Gerente, 5 Jefes y 194 Operadores.
 - PIN de demo.
 
-El comando carga estos catálogos y la matriz de habilidades. **No** crea
-asignaciones ni registros de producción: esa lógica se conecta en historias
-posteriores.
+El comando carga estos catálogos y la matriz de habilidades. Por defecto **no**
+crea asignaciones ni registros de producción. Con `--us15` agrega además 14
+días de producción y los casos controlados que usa la
+[guía de prueba manual de US-15](../../docs/04_guia_pruebas_us15.md).
 
 ## Uso
 
@@ -19,7 +20,16 @@ python manage.py seed_demo
 python manage.py seed_demo --reset
 python manage.py seed_demo --empleados 80 --reset
 python manage.py seed_demo --archivo data/seed/demo_sgprod.json --reset
+
+# Escenario completo para la prueba manual de US-15
+python manage.py seed_demo --reset --us15
 ```
+
+`--us15` **requiere** `--reset`: Borra los datos de dominio y deja siempre los
+mismos tres casos por línea (elegible, defecto antiguo y defecto reciente).
+También asigna cada línea a su Jefe de Línea y cada operador a una línea, crea
+560 asignaciones y 4 480 registros horarios, y deja activa una configuración de
+bono de 14 días. Los números y nombres de los casos se imprimen al terminar.
 
 `--empleados` conserva siempre al Gerente y a todos los Jefes del JSON; el resto
 se toma del inicio de la lista de Operadores.
