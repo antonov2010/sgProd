@@ -217,3 +217,110 @@ def test_linea_rechaza_como_jefe_a_quien_no_tiene_ese_rol(planta):
 
     with pytest.raises(ValidationError, match="Jefe de Línea"):
         planta.linea_3.full_clean()
+
+import json
+from django.test import TestCase
+from django.urls import reverse
+from apps.personal import services
+from apps.personal.models import Empleado, Estacion, Linea, Rol, SkillMatrix
+
+
+class MatrizSeguridadTests(TestCase):
+    def setUp(self):
+        self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+
+        self.linea_3 = Linea.objects.create(nombre="Línea 3")
+        self.linea_4 = Linea.objects.create(nombre="Línea 4")
+
+        self.estacion_l3 = Estacion.objects.create(linea=self.linea_3, nombre="Corte", orden=1)
+        self.estacion_l4 = Estacion.objects.create(linea=self.linea_4, nombre="Soldadura", orden=1)
+
+        self.jefe_l3 = Empleado.objects.create(
+            numero_empleado="SG-0003",
+            nombre="Jefe L3",
+            pin="123456",
+            rol=self.rol_jefe,
+            linea=self.linea_3,
+            activo=True,
+        )
+        self.operador_l3 = Empleado.objects.create(
+            numero_empleado="SG-0101",
+            nombre="Operador L3",
+            pin="123456",
+            rol=self.rol_operador,
+            linea=self.linea_3,
+            activo=True,
+        )
+        self.operador_l4 = Empleado.objects.create(
+            numero_empleado="SG-0201",
+            nombre="Operador L4",
+            pin="123456",
+            rol=self.rol_operador,
+            linea=self.linea_4,
+            activo=True,
+        )
+
+    def test_anonimo_redirige_a_login_en_matriz(self):
+        resp = self.client.get(reverse("personal:matriz_competencias"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("personal:login"))
+
+    def test_anonimo_recibe_403_al_actualizar_nivel(self):
+        resp = self.client.post(
+            reverse("personal:actualizar_nivel_matriz"),
+            data=json.dumps({
+                "empleado_id": self.operador_l3.id,
+                "estacion_id": self.estacion_l3.id,
+                "nivel": "Principiante",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+    def test_operador_no_accede_a_matriz_ni_edita(self):
+        session = self.client.session
+        session["empleado_id"] = self.operador_l3.id
+        session.save()
+
+        resp_get = self.client.get(reverse("personal:matriz_competencias"))
+        self.assertEqual(resp_get.status_code, 302)
+
+        resp_post = self.client.post(
+            reverse("personal:actualizar_nivel_matriz"),
+            data=json.dumps({
+                "empleado_id": self.operador_l3.id,
+                "estacion_id": self.estacion_l3.id,
+                "nivel": "Experto",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(resp_post.status_code, 403)
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+    def test_jefe_no_puede_editar_otra_linea(self):
+        session = self.client.session
+        session["empleado_id"] = self.jefe_l3.id
+        session.save()
+
+        resp = self.client.post(
+            reverse("personal:actualizar_nivel_matriz"),
+            data=json.dumps({
+                "empleado_id": self.operador_l4.id,
+                "estacion_id": self.estacion_l4.id,
+                "nivel": "Experto",
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+    def test_servicio_rechaza_empleado_de_otra_linea(self):
+        with self.assertRaises(services.NivelInvalido):
+            services.actualizar_nivel(
+                self.operador_l4.id,
+                self.estacion_l3.id,
+                "Experto",
+                linea=self.linea_3,
+            )
