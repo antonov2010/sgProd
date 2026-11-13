@@ -6,7 +6,7 @@ from django.views.decorators.http import require_POST
 
 from . import services
 from .forms import LoginForm
-from .models import Empleado, Estacion, Linea, SkillMatrix
+from .models import AsignacionVigente, Empleado, Estacion, Linea, SkillMatrix
 from .services import generar_sugerencia_turno
 
 
@@ -68,17 +68,27 @@ def matriz_competencias(request):
             {"linea": None, "estaciones": [], "matriz": [], "sugerencia": None},
         )
 
-    # 1. GUARDAR LA NUEVA ASIGNACIÓN VIGENTE (POST)
+    # 1. GUARDAR LA NUEVA ASIGNACIÓN VIGENTE EN LA BASE DE DATOS (POST)
     if request.method == "POST" and "guardar_asignacion" in request.POST:
-        asignaciones_guardadas = {}
         for key, val in request.POST.items():
             if key.startswith("estacion_"):
                 estacion_id = key.replace("estacion_", "")
-                asignaciones_guardadas[estacion_id] = val if val else None
+                estacion_obj = Estacion.objects.filter(
+                    id=estacion_id, linea=linea_actual
+                ).first()
+                if estacion_obj:
+                    empleado_obj = (
+                        Empleado.objects.filter(id=val).first() if val else None
+                    )
+                    AsignacionVigente.objects.update_or_create(
+                        estacion=estacion_obj,
+                        defaults={
+                            "linea": linea_actual,
+                            "empleado": empleado_obj,
+                        },
+                    )
 
-        # Persistir en la sesión (o en el modelo correspondiente)
-        request.session[f"asignacion_vigente_{linea_actual.id}"] = asignaciones_guardadas
-        messages.success(request, "¡Asignación vigente actualizada correctamente!")
+        messages.success(request, "¡Asignación vigente guardada en la base de datos!")
         return redirect("personal:matriz_competencias")
 
     estaciones = Estacion.objects.filter(linea=linea_actual).order_by("orden")
@@ -99,16 +109,20 @@ def matriz_competencias(request):
             fila_niveles.append({"estacion_id": est.id, "nivel": nivel})
         matriz.append({"empleado": emp, "niveles": fila_niveles})
 
-    # 2. CONSTRUIR TABLA 1: ASIGNACIÓN VIGENTE OFICIAL (SIEMPRE ESTÁTICA)
-    asignacion_session = request.session.get(f"asignacion_vigente_{linea_actual.id}", {})
+    # 2. CONSTRUIR TABLA 1: LEER DESDE LA BASE DE DATOS (AsignacionVigente)
+    asignaciones_bd = AsignacionVigente.objects.filter(linea=linea_actual).select_related(
+        "empleado"
+    )
+    mapa_asignaciones = {a.estacion_id: a.empleado for a in asignaciones_bd}
+
     tabla_vigente_estatica = []
     for est in estaciones:
-        emp_id = asignacion_session.get(str(est.id))
-        emp_obj = empleados.filter(id=emp_id).first() if emp_id else None
-        tabla_vigente_estatica.append({
-            "estacion": est,
-            "empleado_asignado": emp_obj
-        })
+        tabla_vigente_estatica.append(
+            {
+                "estacion": est,
+                "empleado_asignado": mapa_asignaciones.get(est.id),
+            }
+        )
 
     # 3. CONSTRUIR TABLA 2: SUGERENCIA DEL MOTOR RF-1.3 (SOLO CUANDO ?sugerir=1)
     sugerencia_propuesta = None
