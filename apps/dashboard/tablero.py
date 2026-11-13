@@ -11,8 +11,12 @@ SUPUESTOS PROVISIONALES (confirmar con Rocío y Carlos Eduardo):
 - Cumplimiento de meta = piezas aceptadas / meta acumulada.
 """
 
-from .umbrales import ETIQUETAS, UMBRALES, peor, semaforo
-
+from .umbrales import ETIQUETAS, UMBRALES, peor,semaforo
+from .kpis import (
+    calcular_fpy as fpy,
+    calcular_tasa_defectos as tasa_defectos,
+    desglosar_kpis,
+)
 _GRAVEDAD_ORDEN = {"bad": 0, "warn": 1, "ok": 2, "none": 3}
 
 
@@ -298,4 +302,6 @@ def construir_tablero(registros, personal=None, umbrales=UMBRALES):
         "lineas": lineas,
         "activa": activa,
         "empleados": _defectos_por_empleado(registros, umbrales),
+        "por_estacion": desglosar_kpis(registros, "estacion"),
+        "por_turno": desglosar_kpis(registros, "turno"),
     }
