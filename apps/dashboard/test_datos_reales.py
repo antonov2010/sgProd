@@ -61,14 +61,16 @@ def test_el_tablero_se_arma_con_datos_reales(escenario):
     assert t["empleados"][0]["nombre"] == "Luis Operador"
 
 
-def test_la_pantalla_usa_ejemplo_si_no_hay_captura(client):
+def test_la_pantalla_usa_ejemplo_si_no_hay_captura(client, entrar):
+    entrar("gerente")
     r = client.get("/dashboard/gerente/")
     assert r.status_code == 200
     assert r.context["tablero_es_ejemplo"] is True
     assert "Datos de ejemplo" in r.content.decode()
 
 
-def test_la_pantalla_usa_datos_reales_si_hay_captura(client, escenario):
+def test_la_pantalla_usa_datos_reales_si_hay_captura(client, escenario, entrar):
+    entrar("gerente")
     r = client.get("/dashboard/gerente/")
     assert r.context["tablero_es_ejemplo"] is False
     assert "Datos reales" in r.content.decode()

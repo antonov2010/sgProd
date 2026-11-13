@@ -40,7 +40,8 @@ def test_el_tablero_cambia_de_color_sin_tocar_codigo():
     assert "bad" in estados_despues
 
 
-def test_la_pantalla_usa_los_umbrales_de_la_base(client):
+def test_la_pantalla_usa_los_umbrales_de_la_base(client, entrar):
+    entrar("gerente")
     UmbralSemaforo.objects.filter(indicador="fpy").update(verde=99.9, amarillo=99.5)
     respuesta = client.get("/dashboard/gerente/")
     assert respuesta.status_code == 200
