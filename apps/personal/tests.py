@@ -1,13 +1,16 @@
 """Pruebas de US-05 y de la corrección de US-06 (RF-1.1 y RF-1.2)."""
 
+import json
 from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
+from django.test import TestCase
 from django.urls import reverse
 
+from . import services
 from .models import Empleado, Estacion, Linea, NivelHabilidad, Rol, SkillMatrix
 
 User = get_user_model()
@@ -217,12 +220,6 @@ def test_linea_rechaza_como_jefe_a_quien_no_tiene_ese_rol(planta):
 
     with pytest.raises(ValidationError, match="Jefe de Línea"):
         planta.linea_3.full_clean()
-
-import json
-from django.test import TestCase
-from django.urls import reverse
-from apps.personal import services
-from apps.personal.models import Empleado, Estacion, Linea, Rol, SkillMatrix
 
 
 class MatrizSeguridadTests(TestCase):
