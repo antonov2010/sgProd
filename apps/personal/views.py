@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 
 from . import services
 from .forms import LoginForm
-from .models import AsignacionVigente, Empleado, Estacion, Linea, SkillMatrix
+from .models import Empleado, Estacion, Linea, SkillMatrix
 from .services import generar_sugerencia_turno
 
 
@@ -96,30 +96,6 @@ def matriz_competencias(request):
             request, "matriz.html", {"linea": None, "estaciones": [], "matriz": []}
         )
 
-
-    # 1. GUARDAR LA NUEVA ASIGNACIÓN VIGENTE EN LA BASE DE DATOS (POST)
-    if request.method == "POST" and "guardar_asignacion" in request.POST:
-        for key, val in request.POST.items():
-            if key.startswith("estacion_"):
-                estacion_id = key.replace("estacion_", "")
-                estacion_obj = Estacion.objects.filter(
-                    id=estacion_id, linea=linea_actual
-                ).first()
-                if estacion_obj:
-                    empleado_obj = (
-                        Empleado.objects.filter(id=val).first() if val else None
-                    )
-                    AsignacionVigente.objects.update_or_create(
-                        estacion=estacion_obj,
-                        defaults={
-                            "linea": linea_actual,
-                            "empleado": empleado_obj,
-                        },
-                    )
-
-        messages.success(request, "¡Asignación vigente guardada en la base de datos!")
-        return redirect("personal:matriz_competencias")
-
     estaciones = Estacion.objects.filter(linea=linea_actual).order_by("orden")
     empleados = Empleado.objects.filter(
         linea=linea_actual, activo=True, rol__tipo_rol__iexact="operador"
@@ -158,13 +134,6 @@ def matriz_competencias(request):
             fila_niveles.append({"estacion_id": est.id, "nivel": nivel})
         matriz.append({"empleado": emp, "niveles": fila_niveles})
 
-
-    # 2. CONSTRUIR TABLA 1: LEER DESDE LA BASE DE DATOS (AsignacionVigente)
-    asignaciones_bd = AsignacionVigente.objects.filter(linea=linea_actual).select_related(
-        "empleado"
-    )
-    mapa_asignaciones = {a.estacion_id: a.empleado for a in asignaciones_bd}
-
     # 4. Construir Mapa de Instructores por Estación (para US-09)
     instructores_por_estacion = {}
     for est in estaciones:
@@ -182,12 +151,6 @@ def matriz_competencias(request):
     tabla_vigente_estatica = []
 
     for est in estaciones:
-        tabla_vigente_estatica.append(
-            {
-                "estacion": est,
-                "empleado_asignado": mapa_asignaciones.get(est.id),
-            }
-        )
         emp_id = asignacion_session.get(str(est.id))
         emp_obj = empleados.filter(id=emp_id).first() if emp_id else None
 

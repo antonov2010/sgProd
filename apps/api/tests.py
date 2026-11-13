@@ -28,6 +28,7 @@ def usuario(db):
 @pytest.fixture
 def planta(db):
     rol = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+    rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
     linea = Linea.objects.create(nombre="Línea 3")
     estacion = Estacion.objects.create(linea=linea, nombre="Corte", orden=1)
     empleado = Empleado.objects.create(
@@ -37,7 +38,19 @@ def planta(db):
         rol=rol,
         linea=linea,
     )
-    return {"linea": linea, "estacion": estacion, "empleado": empleado}
+    jefe = Empleado.objects.create(
+        numero_empleado="SG-0002",
+        nombre="Rocío Salas",
+        pin="1234",
+        rol=rol_jefe,
+        linea=linea,
+    )
+    return {
+        "linea": linea,
+        "estacion": estacion,
+        "empleado": empleado,
+        "jefe": jefe,
+    }
 
 
 # --- Documentación -------------------------------------------------------
@@ -300,6 +313,11 @@ def test_post_con_basic_auth_no_requiere_csrf(usuario, planta):
 
 
 def test_alias_html_sigue_funcionando(client, planta):
+    """La ruta HTML mantiene la misma regla: solo el Jefe de Línea edita."""
+    session = client.session
+    session["empleado_id"] = planta["jefe"].pk
+    session.save()
+
     respuesta = client.post(
         reverse("personal:actualizar_nivel_matriz"),
         data={
