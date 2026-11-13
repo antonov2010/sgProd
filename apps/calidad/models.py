@@ -1,6 +1,7 @@
 
 # Create your models here.
 from django.db import models
+from django.utils import timezone
 
 class CatalogoDefecto(models.Model):
     codigo = models.CharField(max_length=20, unique=True)
@@ -13,7 +14,9 @@ class Asignacion(models.Model):
     # Relacionamos con los modelos creados en la app personal
     empleado = models.ForeignKey('personal.Empleado', on_delete=models.CASCADE)
     estacion = models.ForeignKey('personal.Estacion', on_delete=models.CASCADE)
-    fecha = models.DateField(auto_now_add=True)
+    # Fecha de planta (TIME_ZONE), no la del reloj del sistema: auto_now_add usa
+    # date.today() y en Windows puede quedar en UTC, un día adelante por la tarde.
+    fecha = models.DateField(default=timezone.localdate)
     turno = models.IntegerField()
     alerta_supervision = models.BooleanField(default=False)
 
