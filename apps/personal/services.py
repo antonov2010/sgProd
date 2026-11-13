@@ -15,34 +15,34 @@ class NivelInvalido(ValueError):
     """El nivel recibido no es uno de los cuatro niveles del catálogo."""
 
 
-def actualizar_nivel(empleado_id, estacion_id, nivel):
-    """Crea, actualiza o elimina el nivel de un empleado en una estación.
-
-    Devuelve el nivel efectivamente guardado. Lanza ``NivelInvalido`` si el
-    nivel no pertenece al catálogo, y ``Empleado.DoesNotExist`` /
-    ``Estacion.DoesNotExist`` si las llaves foráneas no existen.
-
-    ``Sin nivel`` borra el registro: la matriz se representa con ausencia de
-    fila en lugar de con un valor de relleno.
-    """
-    if nivel not in NIVELES_PERMITIDOS:
-        raise NivelInvalido(
-            f"Nivel no válido. Debe ser uno de: {', '.join(NIVELES_PERMITIDOS)}"
-        )
+def actualizar_nivel(empleado_id, estacion_id, nivel, linea=None):
+    """Actualiza o elimina el nivel de habilidad de un empleado en una estación."""
+    if not empleado_id or not estacion_id:
+        raise NivelInvalido("Faltan identificadores de empleado o estación.")
 
     empleado = Empleado.objects.get(pk=empleado_id)
     estacion = Estacion.objects.get(pk=estacion_id)
 
-    if nivel == NIVEL_SIN_ASIGNAR:
-        SkillMatrix.objects.filter(empleado=empleado, estacion=estacion).delete()
-        return NIVEL_SIN_ASIGNAR
+    if linea is not None:
+        if empleado.linea_id != linea.id:
+            raise NivelInvalido("El empleado no pertenece a la línea autorizada.")
+        if estacion.linea_id != linea.id:
+            raise NivelInvalido("La estación no pertenece a la línea autorizada.")
 
-    SkillMatrix.objects.update_or_create(
+    if not nivel:
+        SkillMatrix.objects.filter(empleado=empleado, estacion=estacion).delete()
+        return None
+
+    niveles_validos = {choice[0] for choice in NivelHabilidad.choices}
+    if nivel not in niveles_validos:
+        raise NivelInvalido(f"Nivel no válido: {nivel}")
+
+    obj, _ = SkillMatrix.objects.update_or_create(
         empleado=empleado,
         estacion=estacion,
         defaults={"nivel": nivel},
     )
-    return nivel
+    return obj.nivel
 
 
 # ------------------------------------------------------------------

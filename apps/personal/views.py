@@ -1,4 +1,6 @@
 import json
+from functools import wraps
+
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -8,6 +10,36 @@ from . import services
 from .forms import LoginForm
 from .models import Empleado, Estacion, Linea, SkillMatrix
 from .services import generar_sugerencia_turno
+
+
+def jefe_de_linea_requerido(vista):
+    """Solo un Jefe de Línea activo con sesión iniciada puede acceder."""
+
+    @wraps(vista)
+    def envoltura(request, *args, **kwargs):
+        jefe = (
+            Empleado.objects.filter(
+                pk=request.session.get("empleado_id"),
+                activo=True,
+                rol__tipo_rol__iexact="jefe",
+            )
+            .select_related("linea")
+            .first()
+        )
+        if jefe is None:
+            if request.method == "POST" and "guardar_asignacion" not in request.POST:
+                return JsonResponse(
+                    {"success": False, "error": "Inicia sesión como Jefe de Línea."},
+                    status=403,
+                )
+            messages.error(request, "Inicia sesión como Jefe de Línea para continuar.")
+            return redirect("personal:login")
+
+        request.jefe = jefe
+        request.linea = jefe.linea or Linea.objects.filter(jefe_linea=jefe).first()
+        return vista(request, *args, **kwargs)
+
+    return envoltura
 
 
 def login_empleado(request):
@@ -56,33 +88,41 @@ def logout_empleado(request):
     return redirect("personal:login")
 
 
+@jefe_de_linea_requerido
 def matriz_competencias(request):
-    empleado_id = request.session.get("empleado_id")
-    jefe = Empleado.objects.filter(id=empleado_id).first()
-    
-    linea_actual = jefe.linea if (jefe and jefe.linea) else Linea.objects.first()
+    linea_actual = request.linea
     if not linea_actual:
-        return render(request, "matriz.html", {"linea": None, "estaciones": [], "matriz": []})
+        return render(
+            request, "matriz.html", {"linea": None, "estaciones": [], "matriz": []}
+        )
 
-    # 1. Procesar guardado de asignación (POST)
-    if request.method == "POST" and "guardar_asignacion" in request.POST:
-        asignaciones_guardadas = {}
-        for key, val in request.POST.items():
-            if key.startswith("estacion_"):
-                estacion_id = key.replace("estacion_", "")
-                asignaciones_guardadas[estacion_id] = val if val else None
-        
-        request.session[f"asignacion_vigente_{linea_actual.id}"] = asignaciones_guardadas
-        messages.success(request, "¡Asignación vigente actualizada correctamente!")
-        return redirect("personal:matriz_competencias")
-
-    # 2. Consultar datos
     estaciones = Estacion.objects.filter(linea=linea_actual).order_by("orden")
     empleados = Empleado.objects.filter(
         linea=linea_actual, activo=True, rol__tipo_rol__iexact="operador"
     ).order_by("nombre")
-    
-    habilidades = SkillMatrix.objects.filter(empleado__in=empleados, estacion__in=estaciones)
+
+    # 1. Procesar guardado de asignación (POST) validando pertenencia a la línea
+    if request.method == "POST" and "guardar_asignacion" in request.POST:
+        estaciones_validas = {str(e.id) for e in estaciones}
+        empleados_validos = {str(emp.id) for emp in empleados}
+        asignaciones_guardadas = {}
+
+        for key, val in request.POST.items():
+            if key.startswith("estacion_"):
+                estacion_id = key.replace("estacion_", "")
+                if estacion_id in estaciones_validas:
+                    asignaciones_guardadas[estacion_id] = (
+                        val if (val and val in empleados_validos) else None
+                    )
+
+        request.session[f"asignacion_vigente_{linea_actual.id}"] = asignaciones_guardadas
+        messages.success(request, "¡Asignación vigente actualizada correctamente!")
+        return redirect("personal:matriz_competencias")
+
+    # 2. Consultar habilidades de la línea
+    habilidades = SkillMatrix.objects.filter(
+        empleado__in=empleados, estacion__in=estaciones
+    )
     mapa_habilidades = {(h.empleado_id, h.estacion_id): h.nivel for h in habilidades}
 
     # 3. Construir Matriz General
@@ -98,53 +138,61 @@ def matriz_competencias(request):
     instructores_por_estacion = {}
     for est in estaciones:
         instructores = [
-            h.empleado for h in habilidades 
+            h.empleado
+            for h in habilidades
             if h.estacion_id == est.id and h.nivel == "Instructor"
         ]
         instructores_por_estacion[est.id] = instructores
 
     # 5. CONSTRUIR TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA
-    asignacion_session = request.session.get(f"asignacion_vigente_{linea_actual.id}", {})
+    asignacion_session = request.session.get(
+        f"asignacion_vigente_{linea_actual.id}", {}
+    )
     tabla_vigente_estatica = []
-    
+
     for est in estaciones:
         emp_id = asignacion_session.get(str(est.id))
         emp_obj = empleados.filter(id=emp_id).first() if emp_id else None
-        
+
         nivel = mapa_habilidades.get((emp_obj.id, est.id)) if emp_obj else None
-        # Ahora se activa alerta/instructor para Principiante y Sin Nivel:
-        es_principiante = (nivel == "Principiante" or not nivel)
-        
+        es_principiante = nivel == "Principiante" or not nivel
+
         instructores = instructores_por_estacion.get(est.id, [])
-        instructor_apoyo = instructores[0] if (es_principiante and instructores) else None
-        
-        tabla_vigente_estatica.append({
-            "estacion": est,
-            "empleado_asignado": emp_obj,
-            "nivel": nivel,
-            "es_principiante": es_principiante,
-            "instructor_apoyo": instructor_apoyo
-        })
+        instructor_apoyo = (
+            instructores[0] if (es_principiante and instructores) else None
+        )
+
+        tabla_vigente_estatica.append(
+            {
+                "estacion": est,
+                "empleado_asignado": emp_obj,
+                "nivel": nivel,
+                "es_principiante": es_principiante,
+                "instructor_apoyo": instructor_apoyo,
+            }
+        )
 
     # 6. CONSTRUIR TABLA 2: SUGERENCIA DE DISTRIBUCIÓN
     sugerencia_propuesta = None
     if request.GET.get("sugerir") == "1":
         sugerencia_propuesta = generar_sugerencia_turno(linea_actual)
-        
+
         for item in sugerencia_propuesta["asignaciones"]:
             emp = item.get("empleado")
             est = item["estacion"]
-            
+
             nivel = mapa_habilidades.get((emp.id, est.id)) if emp else None
             item["nivel"] = nivel
-            # Evaluamos si requiere apoyo (Principiante o Sin Nivel)
-            item["es_principiante"] = (nivel == "Principiante" or not nivel)
-            
-            instructores = instructores_por_estacion.get(est.id, [])
-            item["instructor_apoyo"] = instructores[0] if (item["es_principiante"] and instructores) else None
+            item["es_principiante"] = nivel == "Principiante" or not nivel
 
-    # Mapa de habilidades en formato JSON para reactividad dinámica en JS
-    mapa_niveles_json = json.dumps({f"{h.empleado_id}_{h.estacion_id}": h.nivel for h in habilidades})
+            instructores = instructores_por_estacion.get(est.id, [])
+            item["instructor_apoyo"] = (
+                instructores[0] if (item["es_principiante"] and instructores) else None
+            )
+
+    mapa_niveles_json = json.dumps(
+        {f"{h.empleado_id}_{h.estacion_id}": h.nivel for h in habilidades}
+    )
 
     return render(
         request,
@@ -162,7 +210,13 @@ def matriz_competencias(request):
 
 
 @require_POST
+@jefe_de_linea_requerido
 def actualizar_nivel_matriz(request):
+    if request.linea is None:
+        return JsonResponse(
+            {"success": False, "error": "No tienes una línea asignada."}, status=403
+        )
+
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -170,20 +224,29 @@ def actualizar_nivel_matriz(request):
             {"success": False, "error": "Cuerpo JSON inválido"}, status=400
         )
 
+    empleado_id = data.get("empleado_id")
+    estacion_id = data.get("estacion_id")
+
+    empleado = Empleado.objects.filter(pk=empleado_id, linea=request.linea).first()
+    if empleado is None:
+        return JsonResponse(
+            {"success": False, "error": "El empleado no pertenece a tu línea."},
+            status=403,
+        )
+
+    estacion = Estacion.objects.filter(pk=estacion_id, linea=request.linea).first()
+    if estacion is None:
+        return JsonResponse(
+            {"success": False, "error": "La estación no pertenece a tu línea."},
+            status=403,
+        )
+
     try:
         nivel = services.actualizar_nivel(
-            data.get("empleado_id"), data.get("estacion_id"), data.get("nivel")
+            empleado.id, estacion.id, data.get("nivel"), linea=request.linea
         )
     except services.NivelInvalido as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
-    except Empleado.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": "Empleado no encontrado"}, status=404
-        )
-    except Estacion.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": "Estación no encontrada"}, status=404
-        )
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
