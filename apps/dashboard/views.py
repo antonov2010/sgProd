@@ -1,6 +1,10 @@
-from django.shortcuts import render
+from django.http import Http404
+from django.shortcuts import get_object_or_404, render
+
+from apps.personal.models import Empleado
 
 from .accesos import rol_requerido
+from .bonos import calcular_elegibles_bono
 from .config_umbrales import umbrales_actuales
 from .datos_ejemplo import personal_ejemplo, registros_ejemplo
 from .datos_reales import personal_real, registros_reales
@@ -29,8 +33,35 @@ def pantalla_gerente(request):
     else:
         personal = personal_real()
     tablero = construir_tablero(registros, personal, umbrales_actuales())
+    bono = calcular_elegibles_bono()
     return render(
         request,
         'dashboard/gerente.html',
-        {'tablero': tablero, 'tablero_es_ejemplo': es_ejemplo},
+        {
+            'tablero': tablero,
+            'tablero_es_ejemplo': es_ejemplo,
+            'bono': bono,
+        },
+    )
+
+
+@rol_requerido('gerente')
+def detalle_elegible_bono(request, empleado_id):
+    """Muestra los registros horarios que sustentan la elegibilidad de un operador (US-15)."""
+    empleado = get_object_or_404(Empleado, pk=empleado_id)
+    bono = calcular_elegibles_bono()
+    detalle = next(
+        (item for item in bono['elegibles'] if item['empleado_id'] == empleado.id),
+        None,
+    )
+    if detalle is None:
+        raise Http404("El operador no es elegible a bono en el periodo evaluado.")
+    return render(
+        request,
+        'dashboard/bono_detalle.html',
+        {
+            'empleado': empleado,
+            'detalle': detalle,
+            'periodo': bono['periodo'],
+        },
     )
