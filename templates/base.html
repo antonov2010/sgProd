@@ -10,6 +10,72 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/theme.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  
+  <style>
+    /* Notificación centrada flotante un chirrín más abajo */
+    .sg-flashes-toast {
+      position: fixed;
+      top: 85px; /* <--- Bajado un chirrín más para mayor despeje */
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: auto;
+      max-width: 90%;
+      pointer-events: none;
+    }
+    .sg-flash-toast {
+      pointer-events: auto;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: #ffffff;
+      animation: toastDropDown 0.35s ease-out forwards;
+    }
+    .sg-flash-toast--ok {
+      background-color: #15803d;
+      border: 1px solid #22c55e;
+    }
+    .sg-flash-toast--error {
+      background-color: #b91c1c;
+      border: 1px solid #ef4444;
+    }
+    .sg-flash-toast-close {
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      opacity: 0.8;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .sg-flash-toast-close:hover {
+      opacity: 1;
+    }
+
+    @keyframes toastDropDown {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  </style>
+
   {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -22,18 +88,36 @@
   </nav>
   {% endblock %}
 
+  {% if messages %}
+    <div class="sg-flashes-toast" id="sg-toast-container">
+      {% for message in messages %}
+        <div class="sg-flash-toast {% if message.tags == 'error' %}sg-flash-toast--error{% else %}sg-flash-toast--ok{% endif %}" role="status">
+          <span>{{ message }}</span>
+          <button class="sg-flash-toast-close" onclick="this.parentElement.remove()" title="Cerrar">✕</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <main class="sg-main {% block main_class %}{% endblock %}">
-    {% if messages %}
-      <div class="sg-flashes">
-        {% for message in messages %}
-          <div class="sg-flash {% if message.tags == 'error' %}sg-flash--error{% elif message.tags == 'success' %}sg-flash--ok{% endif %}" role="status">
-            {{ message }}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
     {% block content %}{% endblock %}
   </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const toasts = document.querySelectorAll(".sg-flash-toast");
+      toasts.forEach(function (toast) {
+        setTimeout(function () {
+          toast.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+          toast.style.opacity = "0";
+          toast.style.transform = "translateY(-15px)";
+          setTimeout(function () {
+            toast.remove();
+          }, 400);
+        }, 3000);
+      });
+    });
+  </script>
 
   {% block extra_js %}{% endblock %}
 </body>

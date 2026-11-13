@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+
+{% block title %}Captura de la hora · SG-Prod{% endblock %}
+
+{% block nav_links %}
+  <span style="color: white; font-weight: 500; margin-right: 15px;">
+    {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
+  </span>
+  <a href="{% url 'dashboard:pantalla_jefe' %}">Mi turno</a>
+  <a href="{% url 'personal:logout' %}">Cerrar sesión</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .cap-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 1rem; }
+  .cap-horas { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+  .cap-horas a { display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--sg-touch); min-width: 88px; padding: 0 1rem; border-radius: var(--sg-radius);
+    border: 2px solid var(--sg-line); background: var(--sg-card); color: var(--sg-ink);
+    font: 600 1.1rem var(--sg-font-head); text-decoration: none; }
+  .cap-horas a[aria-current="true"] { background: var(--sg-primary); border-color: var(--sg-primary); color: #fff; }
+  .cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; }
+  .cap-card { display: flex; flex-direction: column; gap: .75rem; }
+  .cap-card[data-estado="guardado"] { border-color: var(--sg-ok); }
+  .cap-card[data-estado="error"] { border-color: var(--sg-bad); }
+  .cap-card h2 { font-size: 1.35rem; margin: 0; }
+  .cap-op { margin: 0; color: var(--sg-muted); }
+  .cap-campo { display: grid; grid-template-columns: var(--sg-touch) 1fr var(--sg-touch); align-items: center; gap: .25rem .5rem; }
+  .cap-campo span { grid-column: 1 / -1; font: 600 1.05rem var(--sg-font-head); }
+  .cap-campo--ok span { color: var(--sg-ok-fg); }
+  .cap-campo--bad span { color: var(--sg-bad-fg); }
+  .cap-campo--warn span { color: var(--sg-warn-fg); }
+  .cap-campo button { min-height: var(--sg-touch); min-width: var(--sg-touch); padding: 0;
+    border: 2px solid var(--sg-line); border-radius: var(--sg-radius); background: var(--sg-paper);
+    color: var(--sg-ink); font: 700 1.6rem var(--sg-font-head); cursor: pointer; }
+  .cap-campo input { min-height: var(--sg-touch); width: 100%; box-sizing: border-box; text-align: center;
+    border: 2px solid var(--sg-line); border-radius: var(--sg-radius); background: var(--sg-card);
+    color: var(--sg-ink); font: 700 1.5rem var(--sg-font-head); }
+  .cap-campo input:focus, .cap-defecto select:focus { outline: none; border-color: var(--sg-teal); }
+  .cap-defecto { display: flex; flex-direction: column; gap: .25rem; }
+  .cap-defecto[hidden] { display: none; }
+  .cap-defecto span { font: 600 1rem var(--sg-font-head); color: var(--sg-bad-fg); }
+  .cap-defecto select { min-height: var(--sg-touch); width: 100%; box-sizing: border-box; padding: 0 .75rem;
+    border: 2px solid var(--sg-line); border-radius: var(--sg-radius); background: var(--sg-card);
+    color: var(--sg-ink); font: 600 1rem var(--sg-font-head); }
+  .cap-pie { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+  .cap-estado { font-size: .95rem; color: var(--sg-muted); }
+  .cap-estado--ok { color: var(--sg-ok-fg); } .cap-estado--error { color: var(--sg-bad-fg); }
+  .cap-vacia { color: var(--sg-muted); }
+  .cap-acciones { display: flex; justify-content: flex-end; margin: 1.25rem 0 2rem; }
+  .cap-historial { margin-top: 1rem; overflow-x: auto; }
+  .cap-historial td.num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="sg-page-head">
+  <div>
+    <p class="sg-eyebrow">Jefatura de Línea · Calidad</p>
+    <h1>Captura de la hora{% if linea %} — {{ linea.nombre }}{% endif %}</h1>
+    <p>Registra Aceptadas, Rechazadas y Retrabajo por estación. Cada estación se guarda al momento.</p>
+  </div>
+  {% if linea %}<span class="sg-badge sg-badge--warn">Turno {{ turno }}</span>{% endif %}
+</header>
+
+{% if not linea %}
+  <div class="sg-card sg-empty">No tienes una línea asignada. Pide al administrador que te asigne como Jefe de Línea.</div>
+{% else %}
+
+  <p class="sg-seg-label">Hora a capturar</p>
+  <nav class="cap-horas" aria-label="Horas del turno">
+    {% for h in horas %}
+      <a href="?hora={{ h }}" {% if h == hora %}aria-current="true"{% endif %}>{{ h|stringformat:"02d" }}:00</a>
+    {% endfor %}
+  </nav>
+
+  {% if sin_asignar %}
+    <div class="sg-card" style="margin-bottom: 1rem;">
+      <strong>{{ sin_asignar }} estación{{ sin_asignar|pluralize:"es" }} sin operador.</strong>
+      Guarda la asignación vigente en la
+      <a href="{% url 'personal:matriz_competencias' %}">Matriz de Competencias</a> para poder capturarla{{ sin_asignar|pluralize:"s" }}.
+    </div>
+  {% endif %}
+
+  <section class="cap-grid" aria-label="Estaciones de la línea">
+    {% for fila in filas %}
+      <article class="sg-card cap-card"
+               {% if fila.asignacion %}data-asignacion="{{ fila.asignacion.id }}"{% endif %}
+               data-estado="{% if fila.registro %}guardado{% endif %}">
+        <div>
+          <h2>{{ fila.estacion.orden }}. {{ fila.estacion.nombre }}</h2>
+          {% if fila.asignacion %}
+            <p class="cap-op">
+              {{ fila.asignacion.empleado.nombre }}
+              {% if fila.requiere_apoyo %}
+                <span class="sg-badge sg-badge--warn">{{ fila.nivel|default:"Sin nivel" }}</span>
+              {% else %}
+                <span class="sg-badge sg-badge--ok">{{ fila.nivel }}</span>
+              {% endif %}
+            </p>
+          {% else %}
+            <p class="cap-op">Sin operador asignado</p>
+          {% endif %}
+        </div>
+
+        {% if fila.asignacion %}
+          {% with r=fila.registro %}
+          <label class="cap-campo cap-campo--ok">
+            <span>Aceptadas</span>
+            <button type="button" data-paso="-1" aria-label="Restar una aceptada">−</button>
+            <input type="number" name="aceptadas" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_aceptadas|default:0 }}">
+            <button type="button" data-paso="1" aria-label="Sumar una aceptada">+</button>
+          </label>
+          <label class="cap-campo cap-campo--bad">
+            <span>Rechazadas</span>
+            <button type="button" data-paso="-1" aria-label="Restar una rechazada">−</button>
+            <input type="number" name="rechazadas" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_rechazadas|default:0 }}">
+            <button type="button" data-paso="1" aria-label="Sumar una rechazada">+</button>
+          </label>
+          <label class="cap-defecto" {% if not r or r.piezas_rechazadas == 0 %}hidden{% endif %}>
+            <span>Motivo de defecto *</span>
+            <select name="defecto_id">
+              <option value="">-- Selecciona un motivo --</option>
+              {% for d in catalogo_defectos %}
+                <option value="{{ d.id }}" {% if fila.defecto_id == d.id %}selected{% endif %}>
+                  {{ d.codigo }} · {{ d.descripcion }}
+                </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="cap-campo cap-campo--warn">
+            <span>Retrabajo</span>
+            <button type="button" data-paso="-1" aria-label="Restar un retrabajo">−</button>
+            <input type="number" name="retrabajo" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_retrabajo|default:0 }}">
+            <button type="button" data-paso="1" aria-label="Sumar un retrabajo">+</button>
+          </label>
+          <div class="cap-pie">
+            <span class="cap-estado {% if r %}cap-estado--ok{% endif %}" role="status">
+              {% if r %}Guardado{% else %}Sin capturar{% endif %}
+            </span>
+            <button type="button" class="sg-btn" data-guardar>Guardar</button>
+          </div>
+          {% endwith %}
+        {% else %}
+          <p class="cap-vacia">Asigna un operador para capturar esta estación.</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+
+  {% if filas %}
+    <div class="cap-acciones">
+      <button type="button" class="sg-btn sg-btn--accent" id="guardar-todas">Guardar todas las estaciones</button>
+    </div>
+  {% endif %}
+
+  <section class="sg-card cap-historial" aria-labelledby="titulo-historial">
+    <h2 id="titulo-historial">Registros del turno</h2>
+    <table class="sg-table">
+      <thead>
+        <tr>
+          <th>Hora</th>
+          <th>Estación</th>
+          <th>Operador</th>
+          <th>Aceptadas</th>
+          <th>Rechazadas</th>
+          <th>Retrabajo</th>
+          <th>Motivo defecto</th>
+        </tr>
+      </thead>
+      <tbody id="historial">
+        {% for r in historial %}
+          <tr data-registro="{{ r.id }}">
+            <td>{{ r.hora|stringformat:"02d" }}:00</td>
+            <td>{{ r.asignacion.estacion.nombre }}</td>
+            <td>{{ r.asignacion.empleado.nombre }}</td>
+            <td class="num">{{ r.piezas_aceptadas }}</td>
+            <td class="num">{{ r.piezas_rechazadas }}</td>
+            <td class="num">{{ r.piezas_retrabajo }}</td>
+            <td>
+              {% with d=r.defectos.first %}
+                {% if d %}{{ d.defecto }}{% else %}—{% endif %}
+              {% endwith %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr id="historial-vacio"><td colspan="7" class="sg-muted">Aún no hay registros en este turno.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    (function () {
+      const URL_GUARDAR = "{% url 'calidad:guardar_captura' %}";
+      const CSRF = "{{ csrf_token }}";
+      const HORA = {{ hora }};
+      const pad = (n) => String(n).padStart(2, "0");
+
+      function actualizarVisibilidadDefecto(card) {
+        const rechazadas = parseInt(card.querySelector('input[name="rechazadas"]')?.value, 10) || 0;
+        const bloqueDefecto = card.querySelector(".cap-defecto");
+        const selectDefecto = card.querySelector('select[name="defecto_id"]');
+        if (!bloqueDefecto || !selectDefecto) return;
+
+        if (rechazadas > 0) {
+          bloqueDefecto.hidden = false;
+        } else {
+          bloqueDefecto.hidden = true;
+          selectDefecto.value = "";
+        }
+      }
+
+      document.querySelectorAll(".cap-campo button[data-paso]").forEach((boton) => {
+        boton.addEventListener("click", () => {
+          const input = boton.parentElement.querySelector("input");
+          const card = boton.closest(".cap-card");
+          input.value = Math.max(0, (parseInt(input.value, 10) || 0) + Number(boton.dataset.paso));
+          card.dataset.estado = "";
+          if (input.name === "rechazadas") {
+            actualizarVisibilidadDefecto(card);
+          }
+        });
+      });
+
+      document.querySelectorAll(".cap-campo input").forEach((input) => {
+        input.addEventListener("input", () => {
+          const card = input.closest(".cap-card");
+          card.dataset.estado = "";
+          if (input.name === "rechazadas") {
+            actualizarVisibilidadDefecto(card);
+          }
+        });
+      });
+
+      document.querySelectorAll('select[name="defecto_id"]').forEach((select) => {
+        select.addEventListener("change", () => {
+          select.closest(".cap-card").dataset.estado = "";
+        });
+      });
+
+      function pintarHistorial(r) {
+        document.getElementById("historial-vacio")?.remove();
+        let fila = document.querySelector(`tr[data-registro="${r.id}"]`);
+        if (!fila) {
+          fila = document.createElement("tr");
+          fila.dataset.registro = r.id;
+          document.getElementById("historial").prepend(fila);
+        }
+        const celdas = [
+          `${pad(r.hora)}:00`,
+          r.estacion,
+          r.operador,
+          r.aceptadas,
+          r.rechazadas,
+          r.retrabajo,
+          r.defecto || "—",
+        ];
+        fila.replaceChildren(...celdas.map((valor, i) => {
+          const td = document.createElement("td");
+          td.textContent = valor;
+          if (i >= 3 && i <= 5) td.className = "num";
+          return td;
+        }));
+      }
+
+      async function guardar(card) {
+        const estado = card.querySelector(".cap-estado");
+        const valor = (nombre) => card.querySelector(`input[name="${nombre}"]`).value;
+        const rechazadas = parseInt(valor("rechazadas"), 10) || 0;
+        const defectoId = card.querySelector('select[name="defecto_id"]')?.value || "";
+
+        if (rechazadas > 0 && !defectoId) {
+          card.dataset.estado = "error";
+          estado.className = "cap-estado cap-estado--error";
+          estado.textContent = "Selecciona un motivo de defecto.";
+          return false;
+        }
+
+        estado.className = "cap-estado";
+        estado.textContent = "Guardando…";
+        try {
+          const resp = await fetch(URL_GUARDAR, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+            body: JSON.stringify({
+              asignacion_id: Number(card.dataset.asignacion),
+              hora: HORA,
+              aceptadas: valor("aceptadas"),
+              rechazadas: valor("rechazadas"),
+              retrabajo: valor("retrabajo"),
+              defecto_id: defectoId ? Number(defectoId) : null,
+            }),
+          });
+          const datos = await resp.json();
+          if (!datos.ok) throw new Error(datos.error);
+          card.dataset.estado = "guardado";
+          estado.classList.add("cap-estado--ok");
+          estado.textContent = `Guardado · ${datos.ms} ms`;
+          pintarHistorial(datos.registro);
+          return true;
+        } catch (error) {
+          card.dataset.estado = "error";
+          estado.classList.add("cap-estado--error");
+          estado.textContent = error.message || "No se pudo guardar.";
+          return false;
+        }
+      }
+
+      document.querySelectorAll("[data-guardar]").forEach((boton) => {
+        boton.addEventListener("click", () => guardar(boton.closest(".cap-card")));
+      });
+      document.getElementById("guardar-todas")?.addEventListener("click", async () => {
+        for (const card of document.querySelectorAll(".cap-card[data-asignacion]")) {
+          await guardar(card);
+        }
+      });
+    })();
+  </script>
+{% endif %}
+{% endblock %}

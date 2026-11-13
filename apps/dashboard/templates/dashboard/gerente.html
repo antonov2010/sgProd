@@ -16,6 +16,7 @@
   </div>
   <span class="sg-badge sg-badge--ok">Gerente de Producción</span>
 </header>
+{% include "dashboard/_tablero_semaforos.html" %}
 
 <section class="sg-role-grid" aria-label="Secciones del tablero gerencial">
   <article class="sg-card sg-role-card">
@@ -25,11 +26,60 @@
     <div class="sg-empty">Pendiente de conectar los datos de producción.</div>
   </article>
 
-  <article class="sg-card sg-role-card">
-    <p class="sg-eyebrow">Reconocimiento</p>
-    <h2>Bonos del periodo</h2>
-    <p class="sg-muted">Operadores elegibles y seguimiento del bono por cero defectos.</p>
-    <div class="sg-empty">Pendiente de conectar el cálculo del periodo.</div>
+  <article class="sg-card sg-role-card" aria-labelledby="titulo-bono-cero-defectos">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap;">
+      <div>
+        <p class="sg-eyebrow">Reconocimiento</p>
+        <h2 id="titulo-bono-cero-defectos">Bonos del periodo</h2>
+      </div>
+      {% if user.is_staff %}
+      <a href="/admin/dashboard/configuracionbono/" class="sg-btn sg-btn--ghost sg-small">
+        Configurar periodo
+      </a>
+      {% endif %}
+    </div>
+
+    <p class="sg-muted sg-small">
+      Periodo evaluado: <strong>{{ bono.periodo.inicio }}</strong> al <strong>{{ bono.periodo.fin }}</strong>
+      ({{ bono.periodo.tipo }}).
+    </p>
+
+    {% if bono.elegibles %}
+      <div style="overflow-x: auto; margin-top: 0.75rem;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--sg-border, #e2e8f0); text-align: left;">
+              <th style="padding: 0.45rem 0.4rem;">No. Emp.</th>
+              <th style="padding: 0.45rem 0.4rem;">Operador</th>
+              <th style="padding: 0.45rem 0.4rem; text-align: right;">Aceptadas</th>
+              <th style="padding: 0.45rem 0.4rem; text-align: right;">Defectos</th>
+              <th style="padding: 0.45rem 0.4rem; text-align: right;">FPY</th>
+              <th style="padding: 0.45rem 0.4rem; text-align: right;">Evidencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for op in bono.elegibles %}
+            <tr style="border-bottom: 1px solid var(--sg-border, #f1f5f9);">
+              <td style="padding: 0.45rem 0.4rem;">{{ op.numero_empleado }}</td>
+              <td style="padding: 0.45rem 0.4rem; font-weight: 600;">{{ op.nombre }}</td>
+              <td style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.aceptadas }}</td>
+              <td style="padding: 0.45rem 0.4rem; text-align: right;">
+                <span class="sg-badge sg-badge--ok">0 (0.0 %)</span>
+              </td>
+              <td style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.fpy }} %</td>
+              <td style="padding: 0.45rem 0.4rem; text-align: right;">
+                <a href="{% url 'dashboard:detalle_elegible_bono' op.empleado_id %}" class="sg-small">
+                  Ver detalle ({{ op.total_registros }})
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="sg-empty">No hay operadores elegibles a bono por cero defectos en el periodo evaluado.</div>
+    {% endif %}
   </article>
 
   <article class="sg-card sg-role-card">
