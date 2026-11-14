@@ -1,6 +1,7 @@
 """Pruebas de US-05 y de la corrección de US-06 (RF-1.1 y RF-1.2)."""
 
 import json
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -461,6 +462,66 @@ class MatrizFiltrosTests(TestCase):
         respuesta = self.client.get(self.url, {"q": "Bruno"})
 
         self.assertContains(respuesta, "Mostrando 1 de 3 operadores")
+
+    def test_vista_asignacion_no_renderiza_la_tabla_de_habilidades(self):
+        respuesta = self.client.get(self.url, {"vista": "asignacion"})
+
+        self.assertEqual(respuesta.context["vista"], "asignacion")
+        self.assertContains(respuesta, "Asignación vigente de la línea en el turno")
+        self.assertNotContains(
+            respuesta, "Matriz general de habilidades por operador y estación."
+        )
+
+    def test_vista_matriz_no_renderiza_la_tabla_de_asignacion(self):
+        respuesta = self.client.get(self.url, {"vista": "matriz"})
+
+        self.assertEqual(respuesta.context["vista"], "matriz")
+        self.assertContains(
+            respuesta, "Matriz general de habilidades por operador y estación."
+        )
+        self.assertNotContains(
+            respuesta, "Asignación vigente de la línea en el turno"
+        )
+
+    def test_vista_invalida_cae_en_la_matriz(self):
+        respuesta = self.client.get(self.url, {"vista": "otra"})
+
+        self.assertEqual(respuesta.context["vista"], "matriz")
+        self.assertContains(
+            respuesta, "Matriz general de habilidades por operador y estación."
+        )
+        self.assertNotContains(
+            respuesta, "Asignación vigente de la línea en el turno"
+        )
+
+    def test_pestanas_conservan_q_faltantes_y_turno(self):
+        respuesta = self.client.get(
+            self.url, {"q": "ana", "faltantes": "1", "turno": "2"}
+        )
+        contenido = respuesta.content.decode()
+
+        self.assertContains(respuesta, 'role="tablist"')
+        self.assertEqual(contenido.count('role="tab"'), 2)
+
+        for vista in ("matriz", "asignacion"):
+            enlaces = re.findall(
+                rf'href="([^"]*vista={vista}[^"]*)"', contenido
+            )
+            self.assertTrue(enlaces, f"Falta la pestaña {vista}")
+            for enlace in enlaces:
+                self.assertIn("q=ana", enlace)
+                self.assertIn("faltantes=1", enlace)
+                self.assertIn("turno=2", enlace)
+
+    def test_mostrando_x_de_y_sigue_apareciendo_y_el_filtro_es_buscable(self):
+        respuesta = self.client.get(self.url)
+
+        self.assertContains(respuesta, "Mostrando 3 de 3 operadores")
+        self.assertContains(respuesta, 'aria-live="polite"')
+        self.assertContains(respuesta, 'type="search"')
+        self.assertContains(respuesta, 'autocomplete="off"')
+        self.assertContains(respuesta, 'for="filtro-q"')
+        self.assertContains(respuesta, 'id="filtro-q"')
 
     def test_guardar_asignacion_con_filtros_activos_guarda_todas_las_estaciones(self):
         respuesta = self.client.post(

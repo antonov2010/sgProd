@@ -197,6 +197,46 @@
         font-size: 0.9rem;
         color: var(--sg-muted);
     }
+
+    /* Pestañas: separan la asignación vigente de la matriz general. */
+    .matriz-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin: 0 0 1rem;
+        border-bottom: 2px solid var(--sg-line);
+    }
+    .matriz-tabs__tab {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        border: 1px solid transparent;
+        border-bottom: 3px solid transparent;
+        border-radius: 8px 8px 0 0;
+        color: var(--sg-muted);
+        font: 600 0.95rem var(--sg-font-head);
+        text-decoration: none;
+    }
+    .matriz-tabs__tab:hover {
+        color: var(--sg-ink);
+        background: var(--sg-row-hover);
+    }
+    .matriz-tabs__tab[aria-selected="true"] {
+        color: var(--sg-primary);
+        border-color: var(--sg-line);
+        border-bottom-color: var(--sg-primary);
+        background: var(--sg-card);
+    }
+    .matriz-tabs__tab:focus-visible {
+        outline: 3px solid var(--sg-thread);
+        outline-offset: 2px;
+    }
+    .matriz-panel__nota {
+        margin: 0 0 1rem;
+        font-size: 0.9rem;
+        color: var(--sg-muted);
+    }
 </style>
 
 <div class="matriz-container">
@@ -224,79 +264,7 @@
 
         <p id="matriz-estado" class="matriz-estado" role="status" aria-live="polite"></p>
 
-        <!-- TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA -->
-        <div class="matriz-card matriz-card--accent">
-            <div class="matriz-card__head sg-panel-soft">
-                <h2 class="sg-heading-teal" style="margin: 0; font-size: 1.1rem; font-weight: 700;">
-                    <span aria-hidden="true">📌</span> Asignación Vigente de la Línea (Turno {{ turno }})
-                </h2>
-                <p class="sg-muted" style="margin: 4px 0 0 0; font-size: 0.85rem;">
-                    Estado oficial estático de los operadores asignados a cada estación de trabajo.
-                </p>
-            </div>
-            <div class="matriz-table-wrapper">
-                <table class="matriz-table">
-                    <caption class="visually-hidden">
-                        Asignación vigente de la línea en el turno {{ turno }}.
-                    </caption>
-                    <thead>
-                        <tr>
-                            <th scope="col" class="col-empleado">Estación de Trabajo</th>
-                            {% for item in tabla_vigente_estatica %}
-                                <th scope="col">{{ item.estacion.nombre }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <th scope="row" class="cell-empleado" style="background-color: var(--sg-level-autonomo-bg); color: var(--sg-level-autonomo-fg);">
-                                <strong>Operador Vigente</strong>
-                            </th>
-                            {% for item in tabla_vigente_estatica %}
-                                <td style="{% if item.es_principiante %}background-color: var(--sg-gap-bg); border: 2px solid var(--sg-gap-border);{% endif %}">
-                                    {% if item.empleado_asignado %}
-                                        <div style="font-weight: 700; color: var(--sg-ink); font-size: 0.9rem;">
-                                            {{ item.empleado_asignado.nombre }}
-                                        </div>
-                                        
-                                        {% if item.es_principiante %}
-                                            <div style="margin-top: 6px; padding: 4px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.75rem; color: var(--sg-level-principiante-fg); font-weight: 700;">
-                                                {% if item.nivel == 'Principiante' %}
-                                                    <span aria-hidden="true">⚠️</span> Alerta: Principiante
-                                                {% else %}
-                                                    <span aria-hidden="true">⚠️</span> Sin Nivel Asignado
-                                                {% endif %}
-                                            </div>
-                                            {% if item.instructor_apoyo %}
-                                                <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-link);">
-                                                    <span aria-hidden="true">👨‍🏫</span> <strong>Instructor sugerido:</strong><br>
-                                                    {{ item.instructor_apoyo.nombre }}
-                                                </div>
-                                            {% else %}
-                                                <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-bad-fg); font-style: italic;">
-                                                    <span aria-hidden="true">⚠️</span> Sin instructor disponible
-                                                </div>
-                                            {% endif %}
-                                        {% else %}
-                                            <span style="font-size: 0.75rem; color: var(--sg-muted); font-weight: 500;">
-                                                ({{ item.nivel|default:"Sin nivel" }})
-                                            </span>
-                                        {% endif %}
-
-                                    {% else %}
-                                        <span class="sg-gap" style="font-weight: 700; font-size: 0.85rem;">
-                                            <span aria-hidden="true">⚠️</span> Descubierta
-                                        </span>
-                                    {% endif %}
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TABLA 2: PROPUESTA SUGERIDA EDITABLE -->
+        <!-- TABLA 2: PROPUESTA SUGERIDA EDITABLE (fuera de las pestañas) -->
         {% if sugerencia_propuesta %}
         <form method="POST" class="matriz-card matriz-card--proposal">
             {% csrf_token %}
@@ -383,13 +351,32 @@
         </form>
         {% endif %}
 
+        <!-- Pestañas: solo se pinta el panel activo, la otra tabla no viaja al DOM. -->
+        <nav class="matriz-tabs" role="tablist" aria-label="Vistas de la matriz de competencias">
+            <a id="tab-matriz" class="matriz-tabs__tab" role="tab"
+               href="{% url 'personal:matriz_competencias' %}?vista=matriz&amp;turno={{ turno }}{% if consulta %}&amp;q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&amp;faltantes=1{% endif %}"
+               aria-selected="{% if vista == 'matriz' %}true{% else %}false{% endif %}"
+               aria-controls="panel-matriz">
+                Matriz General de Habilidades
+            </a>
+            <a id="tab-asignacion" class="matriz-tabs__tab" role="tab"
+               href="{% url 'personal:matriz_competencias' %}?vista=asignacion&amp;turno={{ turno }}{% if consulta %}&amp;q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&amp;faltantes=1{% endif %}"
+               aria-selected="{% if vista == 'asignacion' %}true{% else %}false{% endif %}"
+               aria-controls="panel-asignacion">
+                Asignación Vigente de la Línea
+            </a>
+        </nav>
+
+        {% if vista == 'matriz' %}
+        <section id="panel-matriz" role="tabpanel" aria-labelledby="tab-matriz" tabindex="0">
         <!-- TABLA 3: MATRIZ GENERAL DE HABILIDADES POR OPERADOR -->
         <h2 class="sg-heading-teal" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">
             Matriz General de Habilidades por Operador
         </h2>
 
-        <!-- FILTROS DE LA MATRIZ GENERAL -->
+        <!-- FILTROS DE LA MATRIZ GENERAL (solo aplican a este panel) -->
         <form method="get" action="{% url 'personal:matriz_competencias' %}" class="matriz-filtros" role="search">
+            <input type="hidden" name="vista" value="matriz">
             <input type="hidden" name="turno" value="{{ turno }}">
             <div class="matriz-filtros__campo">
                 <label for="filtro-q" class="matriz-filtros__label">Buscar operador</label>
@@ -403,11 +390,11 @@
             </div>
             <button type="submit" class="sg-cta">Filtrar</button>
             <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--ghost">Limpiar</a>
-            <p class="matriz-filtros__resumen" role="status">Mostrando {{ mostrados }} de {{ total_operadores }} operadores</p>
+            <p id="matriz-resumen" class="matriz-filtros__resumen" role="status" aria-live="polite"
+               data-total="{{ total_operadores }}">Mostrando {{ mostrados }} de {{ total_operadores }} operadores</p>
         </form>
 
-        {% if matriz %}
-        <div class="matriz-card">
+        <div class="matriz-card" id="matriz-tabla" {% if not matriz %}hidden{% endif %}>
             <div class="matriz-table-wrapper matriz-table-wrapper--scroll">
                 <table class="matriz-table">
                     <caption class="visually-hidden">
@@ -423,7 +410,8 @@
                     </thead>
                     <tbody>
                         {% for fila in matriz %}
-                            <tr>
+                            <tr data-nombre="{{ fila.empleado.nombre }}"
+                                data-numero-empleado="{{ fila.empleado.numero_empleado }}">
                                 <th scope="row" class="cell-empleado">
                                     <div style="font-size: 0.75rem; color: var(--sg-muted);">{{ fila.empleado.numero_empleado }}</div>
                                     <div>{{ fila.empleado.nombre }}</div>
@@ -455,8 +443,87 @@
                 </table>
             </div>
         </div>
+        <div class="sg-empty" id="matriz-sin-resultados" {% if matriz %}hidden{% endif %}>
+            Ningún operador coincide con el filtro.
+        </div>
+        </section>
         {% else %}
-            <div class="sg-empty">Ningún operador coincide con el filtro.</div>
+        <section id="panel-asignacion" role="tabpanel" aria-labelledby="tab-asignacion" tabindex="0">
+            <p class="matriz-panel__nota">
+                La búsqueda y el filtro de faltantes aplican solo a la Matriz General de Habilidades.
+            </p>
+            <!-- TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA -->
+            <div class="matriz-card matriz-card--accent">
+                <div class="matriz-card__head sg-panel-soft">
+                    <h2 class="sg-heading-teal" style="margin: 0; font-size: 1.1rem; font-weight: 700;">
+                        <span aria-hidden="true">📌</span> Asignación Vigente de la Línea (Turno {{ turno }})
+                    </h2>
+                    <p class="sg-muted" style="margin: 4px 0 0 0; font-size: 0.85rem;">
+                        Estado oficial estático de los operadores asignados a cada estación de trabajo.
+                    </p>
+                </div>
+                <div class="matriz-table-wrapper">
+                    <table class="matriz-table">
+                        <caption class="visually-hidden">
+                            Asignación vigente de la línea en el turno {{ turno }}.
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="col-empleado">Estación de Trabajo</th>
+                                {% for item in tabla_vigente_estatica %}
+                                    <th scope="col">{{ item.estacion.nombre }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row" class="cell-empleado" style="background-color: var(--sg-level-autonomo-bg); color: var(--sg-level-autonomo-fg);">
+                                    <strong>Operador Vigente</strong>
+                                </th>
+                                {% for item in tabla_vigente_estatica %}
+                                    <td style="{% if item.es_principiante %}background-color: var(--sg-gap-bg); border: 2px solid var(--sg-gap-border);{% endif %}">
+                                        {% if item.empleado_asignado %}
+                                            <div style="font-weight: 700; color: var(--sg-ink); font-size: 0.9rem;">
+                                                {{ item.empleado_asignado.nombre }}
+                                            </div>
+
+                                            {% if item.es_principiante %}
+                                                <div style="margin-top: 6px; padding: 4px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.75rem; color: var(--sg-level-principiante-fg); font-weight: 700;">
+                                                    {% if item.nivel == 'Principiante' %}
+                                                        <span aria-hidden="true">⚠️</span> Alerta: Principiante
+                                                    {% else %}
+                                                        <span aria-hidden="true">⚠️</span> Sin Nivel Asignado
+                                                    {% endif %}
+                                                </div>
+                                                {% if item.instructor_apoyo %}
+                                                    <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-link);">
+                                                        <span aria-hidden="true">👨‍🏫</span> <strong>Instructor sugerido:</strong><br>
+                                                        {{ item.instructor_apoyo.nombre }}
+                                                    </div>
+                                                {% else %}
+                                                    <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-bad-fg); font-style: italic;">
+                                                        <span aria-hidden="true">⚠️</span> Sin instructor disponible
+                                                    </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <span style="font-size: 0.75rem; color: var(--sg-muted); font-weight: 500;">
+                                                    ({{ item.nivel|default:"Sin nivel" }})
+                                                </span>
+                                            {% endif %}
+
+                                        {% else %}
+                                            <span class="sg-gap" style="font-weight: 700; font-size: 0.85rem;">
+                                                <span aria-hidden="true">⚠️</span> Descubierta
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
         {% endif %}
 
     {% endif %}
@@ -471,6 +538,56 @@ const INSTRUCTORES = JSON.parse(document.getElementById('instructores-apoyo').te
 function mostrarEstadoMatriz(mensaje) {
     const estado = document.getElementById('matriz-estado');
     if (estado) estado.textContent = mensaje;
+}
+
+// Búsqueda en vivo: filtra en el cliente las filas ya renderizadas, sin
+// recargar ni quitar el foco del campo. A partir de 3 caracteres; con menos
+// se vuelven a mostrar todas las filas.
+const filtroMatriz = document.getElementById('filtro-q');
+const tablaMatriz = document.getElementById('matriz-tabla');
+const resumenMatriz = document.getElementById('matriz-resumen');
+const sinResultadosMatriz = document.getElementById('matriz-sin-resultados');
+let temporizadorFiltroMatriz = null;
+
+function normalizarTextoMatriz(texto) {
+    return (texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function aplicarFiltroMatriz() {
+    if (!tablaMatriz || !resumenMatriz) return;
+
+    const consulta = normalizarTextoMatriz(filtroMatriz ? filtroMatriz.value : '');
+    const filas = Array.from(tablaMatriz.querySelectorAll('tbody tr'));
+    const filtrando = consulta.length >= 3;
+    let visibles = 0;
+
+    filas.forEach((fila) => {
+        const nombre = normalizarTextoMatriz(fila.dataset.nombre);
+        const numero = normalizarTextoMatriz(fila.dataset.numeroEmpleado);
+        const coincide = !filtrando
+            || nombre.includes(consulta)
+            || numero.includes(consulta);
+        fila.hidden = !coincide;
+        if (coincide) visibles += 1;
+    });
+
+    const total = Number(resumenMatriz.dataset.total || filas.length);
+    resumenMatriz.textContent = `Mostrando ${visibles} de ${total} operadores`;
+
+    // Sin coincidencias se oculta la tabla y se muestra el estado vacío.
+    tablaMatriz.hidden = visibles === 0;
+    if (sinResultadosMatriz) sinResultadosMatriz.hidden = visibles > 0;
+}
+
+if (filtroMatriz) {
+    filtroMatriz.addEventListener('input', () => {
+        window.clearTimeout(temporizadorFiltroMatriz);
+        temporizadorFiltroMatriz = window.setTimeout(aplicarFiltroMatriz, 280);
+    });
 }
 
 function emojiOculto(emoji) {

@@ -25,6 +25,10 @@ MENSAJE_BLOQUEO = (
     "Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo."
 )
 
+# Pestañas de la pantalla de matriz: la general (por defecto) y la asignación
+# vigente de la línea. Cualquier otro valor cae en la matriz general.
+VISTAS_MATRIZ = ("matriz", "asignacion")
+
 
 def jefe_de_linea_requerido(vista):
     """Solo un Jefe de Línea activo con sesión iniciada puede acceder."""
@@ -148,6 +152,11 @@ def logout_empleado(request):
 
 @jefe_de_linea_requerido
 def matriz_competencias(request):
+    # Pestaña activa: solo se renderiza su panel; el resto no viaja en el DOM.
+    vista = request.GET.get("vista", "matriz")
+    if vista not in VISTAS_MATRIZ:
+        vista = "matriz"
+
     linea_actual = request.linea
     if not linea_actual:
         return render(
@@ -155,6 +164,7 @@ def matriz_competencias(request):
             "matriz.html",
             {
                 "linea": None,
+                "vista": vista,
                 "turno": calidad_services.turno_de_la_hora(
                     calidad_services.hora_actual()
                 ),
@@ -329,6 +339,7 @@ def matriz_competencias(request):
         "matriz.html",
         {
             "linea": linea_actual,
+            "vista": vista,
             "turno": turno,
             "estaciones": estaciones,
             "matriz": matriz,
