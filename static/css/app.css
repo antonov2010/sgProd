@@ -213,9 +213,9 @@
   padding: 4px;
   margin: -4px;
 }
-.tg-carrusel.is-carrusel .tg-carrusel__pista { display: flex; gap: 1rem; }
+.tg-carrusel.is-carrusel .tg-carrusel__pista { display: flex; gap: .85rem; }
 .tg-carrusel.is-carrusel .tg-linea {
-  flex: 0 0 calc((100% - 2rem) / 3);
+  flex: 0 0 calc((100% - 1.7rem) / 3);
   min-width: 0;
 }
 .tg-carrusel__controles {

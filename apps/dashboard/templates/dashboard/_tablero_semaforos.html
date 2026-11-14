@@ -39,28 +39,76 @@
   .tg-chip b { font-variant-numeric: tabular-nums; }
   .tg-ayuda { margin: 0 0 .75rem; color: var(--tg-muted); font-size: .95rem; }
   .tg-lineas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
-  .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column; }
+  .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column;
+              padding: .7rem .85rem .75rem; container-type: inline-size; }
   .tg-linea.is-activa { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
-  .tg-resumen { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .25rem 0 .5rem; }
-  .tg-resumen strong { font-size: 1.6rem; }
-  .tg-spark { width: 160px; height: 44px; flex: none; }
-  .tg-personal { margin: 0 0 .6rem; padding: .55rem 0; border-top: 1px solid var(--tg-line); font-size: .92rem; }
-  .tg-personal b { font-weight: 700; }
-  .tg-nombres { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
-  .tg-nombres span { padding: .05rem .55rem; border: 1px solid var(--tg-line); border-radius: 999px; font-size: .82rem; }
+  /* Cabecera: FPY grande, sparkline a la derecha y una sola línea de contexto. */
+  .tg-linea .tg-cab { margin-bottom: .15rem; }
+  .tg-linea .tg-cab h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                         font-size: 1.05rem; }
+  .tg-linea .tg-badge { padding: .05rem .5rem; font-size: .8rem; }
+  .tg-cabecera { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+  .tg-fpy { min-width: 0; font: 700 1.85rem/1.05 var(--sg-font-head); font-variant-numeric: tabular-nums;
+            white-space: nowrap; }
+  .tg-spark { width: 140px; max-width: 42%; height: auto; flex: 0 1 140px; }
+  .tg-fpy__pie { display: flex; align-items: baseline; gap: .5rem; margin: .15rem 0 .4rem;
+                 min-width: 0; font-size: .8rem; color: var(--tg-muted); }
+  .tg-fpy__etiqueta { white-space: nowrap; }
+  .tg-jefe { min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis;
+             white-space: nowrap; font-size: .8rem; text-align: right; }
+  .tg-jefe b { color: var(--sg-ink); font-weight: 700; }
+  .tg-personal { margin: 0 0 .5rem; padding: .35rem 0; border-top: 1px solid var(--tg-line); font-size: .85rem; }
+  .tg-total { margin: 0; }
+  .tg-total b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tg-nombres { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .3rem; }
+  .tg-nombres span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                     padding: .05rem .5rem; border: 1px solid var(--tg-line); border-radius: 999px;
+                     font-size: .8rem; }
   .tg-nombres .mas { color: var(--tg-muted); border-style: dashed; }
-  .tg-estaciones { list-style: none; margin: 0 0 .75rem; padding: 0; }
-  .tg-estaciones li { display: flex; align-items: center; gap: .6rem; padding: .4rem 0; border-top: 1px solid var(--tg-line); }
+  /* Estaciones en 4 filas × 2 columnas dentro de la tarjeta. */
+  .tg-estaciones { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+                   column-gap: .85rem; margin: 0 0 .55rem; padding: 0; }
+  .tg-estaciones li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
+                      column-gap: .35rem; min-height: 2.2rem; padding: .1rem 0;
+                      border-top: 1px solid var(--tg-line); }
   .tg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
   .tg-dot.is-ok { background: var(--tg-ok); } .tg-dot.is-warn { background: var(--tg-warn); }
   .tg-dot.is-bad { background: var(--tg-bad); } .tg-dot.is-none { background: var(--tg-muted); }
-  .tg-estaciones .n { flex: 1; min-width: 0; }
-  .tg-estaciones .v { font-weight: 700; white-space: nowrap; }
-  .tg-estaciones .e { min-width: 5.2rem; white-space: nowrap; text-align: right; color: var(--tg-muted); font-size: .9rem; }
-  .tg-ver { margin-top: auto; min-height: 48px; width: 100%; border: 2px solid var(--tg-focus); border-radius: 10px;
-            background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
-  .tg-ver:hover, .tg-linea.is-activa .tg-ver { background: var(--tg-focus); color: var(--sg-on-thread); }
+  .tg-estaciones .tg-dot { width: 10px; height: 10px; }
+  .tg-est { display: grid; min-width: 0; }
+  .tg-est .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+               font-size: .9rem; line-height: 1.1; }
+  .tg-est .meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline;
+                  column-gap: .3rem; line-height: 1.15; }
+  .tg-est .v { grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap;
+               font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tg-est .e { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+               white-space: nowrap; color: var(--tg-muted); font-size: .8rem; }
+  /* Un solo estilo de botón para todas las tarjetas. */
+  .tg-ver { margin-top: auto; min-height: 48px; width: 100%; padding: .45rem .9rem;
+            border: 2px solid var(--sg-teal); border-radius: 10px;
+            background: var(--tg-card); color: var(--sg-teal);
+            font: inherit; font-weight: 700; cursor: pointer; }
+  .tg-ver:hover { border-color: var(--sg-primary-dark); background: var(--sg-primary-dark);
+                  color: var(--sg-on-solid); }
   .tg-ver:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+  @media (max-width: 720px) {
+    .tg-estaciones { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* Si la tarjeta queda angosta (carrusel en pantallas medianas), una columna
+     evita recortar el estado de la estación. */
+  @container (max-width: 300px) {
+    .tg-estaciones { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* Tarjetas mínimas (carrusel a 3 en pantallas muy angostas): la cabecera
+     se reacomoda en vez de desbordar. */
+  @container (max-width: 220px) {
+    .tg-spark { display: none; }
+    .tg-fpy { font-size: 1.45rem; }
+    .tg-fpy__pie { flex-wrap: wrap; }
+    .tg-fpy__etiqueta { white-space: normal; }
+    .tg-jefe { width: 100%; margin-left: 0; overflow: visible; white-space: normal; text-align: left; }
+  }
   .tg-grafica { width: 100%; height: auto; display: block; }
   .tg-figura { margin: 0; }
   .tg-grafica text { fill: currentColor; font-size: 12px; }
@@ -141,23 +189,27 @@
         {% for l in tablero.lineas %}
         <article class="tg-card tg-linea is-{{ l.estado }}{% if l.id == tablero.activa %} is-activa{% endif %}" data-linea="{{ l.id }}">
           <div class="tg-cab">
-            <h3>{{ l.nombre }}</h3>
+            <h3 title="{{ l.nombre }}">{{ l.nombre }}</h3>
             <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
           </div>
-          <div class="tg-resumen">
-            <div><strong>{{ l.fpy }}</strong><br><small>FPY de la línea</small></div>
+          <div class="tg-cabecera">
+            <strong class="tg-fpy">{{ l.fpy }}</strong>
             <svg class="tg-spark" viewBox="0 0 160 44" role="img"
                  aria-label="Tendencia de FPY hora por hora de {{ l.nombre }}: {{ l.grafica.resumen }}">
               <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
+          <p class="tg-fpy__pie">
+            <span class="tg-fpy__etiqueta">FPY de la línea</span>
+            {% if l.personal.jefe %}<span class="tg-jefe" title="{{ l.personal.jefe }}">Jefe: <b>{{ l.personal.jefe }}</b></span>{% endif %}
+          </p>
           {% if l.personal.jefe or l.personal.total %}
           <div class="tg-personal">
-            {% if l.personal.jefe %}<div>Jefe de línea: <b>{{ l.personal.jefe }}</b></div>{% endif %}
-            <div>En línea: <b>{{ l.personal.total }}</b> operadores</div>
+            <p class="tg-total">En línea: <b>{{ l.personal.total }}</b> operadores</p>
             <div class="tg-nombres">
-              {% for n in l.personal.visibles %}<span>{{ n }}</span>{% endfor %}
-              {% if l.personal.mas %}<span class="mas">+{{ l.personal.mas }} más</span>{% endif %}
+              {# visibles trae hasta 6; la tarjeta muestra 3 y resume el resto. #}
+              {% for n in l.personal.visibles|slice:":3" %}<span title="{{ n }}">{{ n }}</span>{% endfor %}
+              {% if l.personal.total > 3 %}<span class="mas" title="+{{ l.personal.total|add:"-3" }} operadores más">+{{ l.personal.total|add:"-3" }} más</span>{% endif %}
             </div>
           </div>
           {% endif %}
@@ -165,9 +217,13 @@
             {% for e in l.estaciones %}
             <li>
               <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
-              <span class="n">{{ e.nombre }}</span>
-              <span class="v">{{ e.fpy }}</span>
-              <span class="e">{{ e.etiqueta }}</span>
+              <span class="tg-est">
+                <span class="n" title="{{ e.nombre }}">{{ e.nombre }}</span>
+                <span class="meta">
+                  <span class="v" title="FPY {{ e.fpy }}">{{ e.fpy }}</span>
+                  <span class="e">{{ e.etiqueta }}</span>
+                </span>
+              </span>
             </li>
             {% endfor %}
           </ul>
