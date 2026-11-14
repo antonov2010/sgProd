@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.calidad.models import Asignacion, DetalleDefecto, RegistroCalidadHorario
 from apps.dashboard.bonos import calcular_elegibles_bono
 from apps.dashboard.models import ConfiguracionBono
-from apps.personal.models import Empleado, Linea
+from apps.personal.models import Empleado, Linea, NivelHabilidad, SkillMatrix
 
 pytestmark = pytest.mark.django_db
 
@@ -73,6 +73,48 @@ def test_seed_us15_crea_los_casos_de_bono_y_respeta_el_periodo():
     }
     assert antiguo.numero_empleado in elegibles_7
     assert reciente.numero_empleado not in elegibles_7
+
+
+def test_seed_us15_deja_un_principiante_por_linea():
+    _cargar_escenario_us15()
+
+    lineas = list(Linea.objects.order_by("nombre"))
+    assert lineas
+
+    sin_principiante = []
+    for linea in lineas:
+        operadores = Empleado.objects.filter(
+            linea=linea, activo=True, rol__tipo_rol="operador"
+        )
+        tiene_principiante = SkillMatrix.objects.filter(
+            empleado__in=operadores,
+            estacion__linea=linea,
+            nivel=NivelHabilidad.PRINCIPIANTE,
+        ).exists()
+        if not tiene_principiante:
+            sin_principiante.append(linea.nombre)
+
+    assert not sin_principiante, (
+        "Líneas sin un operador Principiante (por Empleado.linea) en una "
+        f"estación de su línea: {sin_principiante}"
+    )
+
+
+def test_seed_sin_us15_tambien_ubica_al_personal_y_deja_un_principiante():
+    """``_asignar_lineas`` no depende de --us15 y la garantía también aplica."""
+    salida = StringIO()
+    call_command("seed_demo", reset=True, empleados=30, stdout=salida)
+
+    assert not Asignacion.objects.exists()
+    assert not Empleado.objects.filter(
+        rol__tipo_rol="operador", linea__isnull=True
+    ).exists()
+    for linea in Linea.objects.all():
+        assert SkillMatrix.objects.filter(
+            empleado__linea=linea,
+            estacion__linea=linea,
+            nivel=NivelHabilidad.PRINCIPIANTE,
+        ).exists(), f"{linea.nombre} sin Principiante visible por Empleado.linea"
 
 
 def test_seed_us15_exige_reset_para_ser_reproducible():

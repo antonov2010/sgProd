@@ -1,7 +1,8 @@
 """Carga los datos maestros del escenario de demo (US-04).
 
-Por defecto solo prepara los catálogos (líneas, estaciones, empleados, metas,
-defectos y matriz de habilidades). Con ``--us15`` agrega además 14 días de
+Por defecto prepara los catálogos (líneas, estaciones, empleados, metas,
+defectos y matriz de habilidades), ubica al personal en su línea y garantiza un
+operador Principiante por línea (US-09). Con ``--us15`` agrega además 14 días de
 asignaciones y registros de calidad para probar a mano la lista de elegibles a
 bono por cero defectos (US-15).
 """
@@ -47,6 +48,11 @@ NIVELES_COBERTURA = (
     NivelHabilidad.EXPERTO,
     NivelHabilidad.AUTONOMO,
     NivelHabilidad.AUTONOMO,
+    # El ``sample`` reparte estos niveles entre los operadores de cada estación,
+    # pero no garantiza que a cada estación le toque un Principiante. US-09 se
+    # garantiza después de asignar líneas, de forma explícita y determinista:
+    # al menos un Principiante por línea en una estación de esa misma línea.
+    NivelHabilidad.PRINCIPIANTE,
 )
 
 # Turno 1 de la captura horaria (US-11): 06:00 a 13:59.
@@ -156,9 +162,12 @@ class Command(BaseCommand):
             )
             self._metas(estaciones)
             habilidades = self._habilidades(empleados, estaciones)
+            # Ubicar al personal en su línea no es exclusivo de US-15: también
+            # lo necesita la garantía de Principiante por línea (US-09).
+            self._asignar_lineas(lineas, jefes)
+            self._garantizar_principiante_por_linea(lineas, habilidades)
             casos_us15 = None
             if options["us15"]:
-                self._asignar_lineas(lineas, jefes)
                 casos_us15 = self._datos_us15(lineas, estaciones, defectos)
 
         self._resumen(
@@ -240,9 +249,11 @@ class Command(BaseCommand):
                     "nombre": persona_demo.nombre,
                     "rol": roles[tipo],
                     "activo": True,
-                    "pin": self.pin,
                 },
             )
+            # El PIN se guarda solo como hash, tanto al crear como al actualizar.
+            empleado.set_pin(self.pin)
+            empleado.save(update_fields=["pin_hash"])
             return empleado
 
         gerente = guardar(gerente_demo, "gerente")
@@ -308,8 +319,9 @@ class Command(BaseCommand):
         """Deja cada línea con su jefe y cada operador en una línea.
 
         El seed maestro no asigna líneas porque US-05 las administra a mano.
-        Para la prueba de US-15 hace falta que el Gerente vea producción real y
-        que un Jefe pueda entrar a la matriz y a la captura.
+        Para la demo hace falta que el Gerente vea producción real, que un Jefe
+        pueda entrar a la matriz y a la captura, y que la matriz de habilidades
+        se pueda leer por ``Empleado.linea``.
         """
         lineas_ordenadas = sorted(lineas, key=lambda linea: linea.nombre)
         jefes_ordenados = sorted(jefes, key=lambda jefe: jefe.numero_empleado)
@@ -325,6 +337,32 @@ class Command(BaseCommand):
 
         Empleado.objects.bulk_update(jefes_ordenados + operadores, ["linea"])
         Linea.objects.bulk_update(lineas_ordenadas, ["jefe_linea"])
+
+    def _garantizar_principiante_por_linea(self, lineas, habilidades):
+        """Deja al menos un Principiante por línea en una estación de su línea.
+
+        La matriz se llena con ``random.sample`` sobre todos los operadores, así
+        que una línea puede quedar sin Principiante. US-09 necesita mostrar la
+        alerta siempre: se asigna de forma explícita y determinista al primer
+        operador de la línea (por número) en su primera estación (por orden).
+        """
+        for linea in sorted(lineas, key=lambda item: item.nombre):
+            operador = (
+                Empleado.objects.filter(
+                    linea=linea, activo=True, rol__tipo_rol="operador"
+                )
+                .order_by("numero_empleado")
+                .first()
+            )
+            estacion = Estacion.objects.filter(linea=linea).order_by("orden").first()
+            if operador is None or estacion is None:
+                continue
+            SkillMatrix.objects.update_or_create(
+                empleado=operador,
+                estacion=estacion,
+                defaults={"nivel": NivelHabilidad.PRINCIPIANTE},
+            )
+            habilidades[(operador.id, estacion.id)] = NivelHabilidad.PRINCIPIANTE
 
     def _datos_us15(self, lineas, estaciones, defectos):
         """Crea 14 días de asignaciones y calidad con casos controlados.

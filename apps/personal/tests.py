@@ -6,14 +6,27 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
 from . import services
 from .models import Empleado, Estacion, Linea, NivelHabilidad, Rol, SkillMatrix
+from .views import MAX_INTENTOS_FALLIDOS, MENSAJE_BLOQUEO
 
 User = get_user_model()
+
+
+def crear_empleado(**datos):
+    """Crea un empleado con el PIN ya hasheado (nunca en texto plano)."""
+    pin = datos.pop("pin", None)
+    empleado = Empleado.objects.create(**datos)
+    if pin is not None:
+        empleado.set_pin(pin)
+        empleado.save(update_fields=["pin_hash"])
+    return empleado
+
 
 PERMISOS_DE_CONSULTA = (
     "view_empleado",
@@ -35,7 +48,7 @@ def planta(db):
     estacion_3 = Estacion.objects.create(linea=linea_3, nombre="Corte", orden=1)
     estacion_4 = Estacion.objects.create(linea=linea_4, nombre="Soldadura", orden=1)
 
-    jefe_3 = Empleado.objects.create(
+    jefe_3 = crear_empleado(
         numero_empleado="SG-0002",
         nombre="Rocío Salas",
         rol=rol_jefe,
@@ -44,20 +57,20 @@ def planta(db):
     linea_3.jefe_linea = jefe_3
     linea_3.save(update_fields=["jefe_linea"])
 
-    ana = Empleado.objects.create(
+    ana = crear_empleado(
         numero_empleado="SG-0100",
         nombre="Ana Activa",
         rol=rol_operador,
         linea=linea_3,
     )
-    beto = Empleado.objects.create(
+    beto = crear_empleado(
         numero_empleado="SG-0101",
         nombre="Beto Baja",
         rol=rol_operador,
         linea=linea_3,
         activo=False,
     )
-    carla = Empleado.objects.create(
+    carla = crear_empleado(
         numero_empleado="SG-0102",
         nombre="Carla Otra Línea",
         rol=rol_operador,
@@ -233,7 +246,7 @@ class MatrizSeguridadTests(TestCase):
         self.estacion_l3 = Estacion.objects.create(linea=self.linea_3, nombre="Corte", orden=1)
         self.estacion_l4 = Estacion.objects.create(linea=self.linea_4, nombre="Soldadura", orden=1)
 
-        self.jefe_l3 = Empleado.objects.create(
+        self.jefe_l3 = crear_empleado(
             numero_empleado="SG-0003",
             nombre="Jefe L3",
             pin="123456",
@@ -241,7 +254,7 @@ class MatrizSeguridadTests(TestCase):
             linea=self.linea_3,
             activo=True,
         )
-        self.operador_l3 = Empleado.objects.create(
+        self.operador_l3 = crear_empleado(
             numero_empleado="SG-0101",
             nombre="Operador L3",
             pin="123456",
@@ -249,7 +262,7 @@ class MatrizSeguridadTests(TestCase):
             linea=self.linea_3,
             activo=True,
         )
-        self.operador_l4 = Empleado.objects.create(
+        self.operador_l4 = crear_empleado(
             numero_empleado="SG-0201",
             nombre="Operador L4",
             pin="123456",
@@ -321,3 +334,139 @@ class MatrizSeguridadTests(TestCase):
                 "Experto",
                 linea=self.linea_3,
             )
+
+    def _post_json(self, cuerpo):
+        session = self.client.session
+        session["empleado_id"] = self.jefe_l3.id
+        session.save()
+        return self.client.post(
+            reverse("personal:actualizar_nivel_matriz"),
+            data=json.dumps(cuerpo),
+            content_type="application/json",
+        )
+
+    def test_b07_cuerpo_lista_no_devuelve_500_en_matriz(self):
+        respuesta = self._post_json([])
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(respuesta.json()["success"])
+
+    def test_b07_cuerpo_null_no_devuelve_500_en_matriz(self):
+        respuesta = self._post_json(None)
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(respuesta.json()["success"])
+
+    def test_b07_ids_no_numericos_no_devuelven_500_en_matriz(self):
+        respuesta = self._post_json(
+            {"empleado_id": "abc", "estacion_id": "x", "nivel": "Experto"}
+        )
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn("empleado_id", respuesta.json()["error"])
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+    def test_b07_falta_nivel_no_devuelve_500_en_matriz(self):
+        respuesta = self._post_json(
+            {"empleado_id": self.operador_l3.id, "estacion_id": self.estacion_l3.id}
+        )
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn("nivel", respuesta.json()["error"])
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+
+class PinHasheadoTests(TestCase):
+    """B-01: el PIN de planta se guarda y se valida siempre como hash."""
+
+    def setUp(self):
+        self.rol = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.linea = Linea.objects.create(nombre="Línea 3")
+        self.empleado = crear_empleado(
+            numero_empleado="SG-0002",
+            nombre="Rocío Salas",
+            pin="123456",
+            rol=self.rol,
+            linea=self.linea,
+        )
+
+    def test_pin_no_se_guarda_en_texto_plano(self):
+        self.empleado.refresh_from_db()
+
+        self.assertNotEqual(self.empleado.pin_hash, "123456")
+        self.assertTrue(self.empleado.check_pin("123456"))
+
+    def test_check_pin_acepta_el_correcto_y_rechaza_el_incorrecto(self):
+        self.assertTrue(self.empleado.check_pin("123456"))
+        self.assertFalse(self.empleado.check_pin("654321"))
+
+    def test_check_pin_tolera_un_empleado_sin_pin(self):
+        self.empleado.pin_hash = None
+
+        self.assertFalse(self.empleado.check_pin("123456"))
+
+    def test_login_funciona_con_el_pin_hasheado(self):
+        respuesta = self.client.post(
+            reverse("personal:login"),
+            {"numero_empleado": "SG-0002", "pin": "123456"},
+        )
+
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(self.client.session["empleado_id"], self.empleado.id)
+
+
+class BloqueoPorIntentosTests(TestCase):
+    """B-02: cinco fallos bloquean el acceso temporalmente, sin perder el motivo."""
+
+    def setUp(self):
+        # La cache local sobrevive entre pruebas: se limpia antes y después.
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.rol = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+        self.empleado = crear_empleado(
+            numero_empleado="SG-0002",
+            nombre="Rocío Salas",
+            pin="123456",
+            rol=self.rol,
+        )
+        self.url = reverse("personal:login")
+
+    def _intentar(self, pin):
+        return self.client.post(
+            self.url,
+            {"numero_empleado": "SG-0002", "pin": pin},
+        )
+
+    def test_cinco_fallos_bloquean_incluso_el_pin_correcto(self):
+        respuesta = self._intentar("000000")
+        self.assertContains(respuesta, "PIN incorrecto")
+
+        for _ in range(MAX_INTENTOS_FALLIDOS - 1):
+            respuesta = self._intentar("000000")
+
+        self.assertContains(respuesta, MENSAJE_BLOQUEO)
+        respuesta = self._intentar("123456")
+        self.assertContains(respuesta, MENSAJE_BLOQUEO)
+        self.assertNotIn("empleado_id", self.client.session)
+
+    def test_al_terminar_el_bloqueo_vuelve_a_entrar(self):
+        for _ in range(MAX_INTENTOS_FALLIDOS):
+            self._intentar("000000")
+
+        self.assertContains(self._intentar("123456"), MENSAJE_BLOQUEO)
+        cache.clear()  # simula que expiró la ventana de 15 minutos
+
+        respuesta = self._intentar("123456")
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(self.client.session["empleado_id"], self.empleado.id)
+
+    def test_un_login_correcto_limpia_el_contador(self):
+        for _ in range(MAX_INTENTOS_FALLIDOS - 1):
+            self._intentar("000000")
+        self.assertEqual(self._intentar("123456").status_code, 302)
+
+        for _ in range(MAX_INTENTOS_FALLIDOS - 1):
+            respuesta = self._intentar("000000")
+
+        self.assertContains(respuesta, "PIN incorrecto")
+        self.assertNotContains(respuesta, MENSAJE_BLOQUEO)

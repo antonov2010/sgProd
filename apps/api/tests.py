@@ -10,6 +10,7 @@ import base64
 import pytest
 import yaml
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import Client
 from django.urls import reverse
 
@@ -18,11 +19,44 @@ from apps.personal.models import Empleado, Estacion, Linea, NivelHabilidad, Rol,
 User = get_user_model()
 
 
+def crear_empleado(**datos):
+    """Crea un empleado con el PIN ya hasheado (nunca en texto plano)."""
+    pin = datos.pop("pin", None)
+    empleado = Empleado.objects.create(**datos)
+    if pin is not None:
+        empleado.set_pin(pin)
+        empleado.save(update_fields=["pin_hash"])
+    return empleado
+
+
+def crear_usuario(username, *, superusuario=False, grupos=()):
+    """Usuario de Django con los grupos de línea que definen su alcance."""
+    usuario = User.objects.create_user(
+        username=username,
+        password="ClaveSegura123",
+        is_staff=True,
+        is_superuser=superusuario,
+    )
+    for nombre in grupos:
+        grupo, _ = Group.objects.get_or_create(name=nombre)
+        usuario.groups.add(grupo)
+    return usuario
+
+
 @pytest.fixture
 def usuario(db):
-    return User.objects.create_user(
-        username="revisor", password="ClaveSegura123", is_staff=True
-    )
+    """Staff con el grupo de la línea 3: el alcance mínimo para editar."""
+    return crear_usuario("revisor", grupos=["Línea 3"])
+
+
+@pytest.fixture
+def usuario_sin_linea(db):
+    return crear_usuario("sin-linea")
+
+
+@pytest.fixture
+def superusuario(db):
+    return crear_usuario("superadmin", superusuario=True)
 
 
 @pytest.fixture
@@ -30,15 +64,24 @@ def planta(db):
     rol = Rol.objects.create(nombre="Operador", tipo_rol="operador")
     rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
     linea = Linea.objects.create(nombre="Línea 3")
+    linea_4 = Linea.objects.create(nombre="Línea 4")
     estacion = Estacion.objects.create(linea=linea, nombre="Corte", orden=1)
-    empleado = Empleado.objects.create(
+    estacion_4 = Estacion.objects.create(linea=linea_4, nombre="Soldadura", orden=1)
+    empleado = crear_empleado(
         numero_empleado="SG-0100",
         nombre="Ana Activa",
         pin="1234",
         rol=rol,
         linea=linea,
     )
-    jefe = Empleado.objects.create(
+    empleado_4 = crear_empleado(
+        numero_empleado="SG-0102",
+        nombre="Carla Otra Línea",
+        pin="1234",
+        rol=rol,
+        linea=linea_4,
+    )
+    jefe = crear_empleado(
         numero_empleado="SG-0002",
         nombre="Rocío Salas",
         pin="1234",
@@ -47,8 +90,11 @@ def planta(db):
     )
     return {
         "linea": linea,
+        "linea_4": linea_4,
         "estacion": estacion,
+        "estacion_4": estacion_4,
         "empleado": empleado,
+        "empleado_4": empleado_4,
         "jefe": jefe,
     }
 
@@ -104,7 +150,9 @@ def test_empleado_autenticado_no_expone_el_pin(client, usuario, planta):
     respuesta = client.get(reverse("api:empleado-list"))
 
     assert respuesta.status_code == 200
-    assert "pin" not in respuesta.json()["results"][0]
+    datos = respuesta.json()["results"][0]
+    assert "pin" not in datos
+    assert "pin_hash" not in datos
 
 
 def test_listado_paginado_y_busqueda(client, usuario, planta):
@@ -223,6 +271,100 @@ def test_post_con_empleado_inexistente_responde_404(client, usuario, planta):
 
     assert respuesta.status_code == 404
     assert respuesta.json()["error"] == "Empleado no encontrado"
+
+
+# --- B-03: el POST respeta la línea del usuario --------------------------
+
+
+def test_staff_con_grupo_linea_3_edita_una_estacion_de_su_linea(client, usuario, planta):
+    client.force_login(usuario)
+
+    respuesta = client.post(
+        reverse("api:matriz-nivel"),
+        {
+            "empleado_id": planta["empleado"].pk,
+            "estacion_id": planta["estacion"].pk,
+            "nivel": NivelHabilidad.EXPERTO,
+        },
+        content_type="application/json",
+    )
+
+    assert respuesta.status_code == 200
+    assert SkillMatrix.objects.get().nivel == "Experto"
+
+
+def test_staff_con_grupo_linea_3_no_edita_una_estacion_de_linea_4(client, usuario, planta):
+    client.force_login(usuario)
+
+    respuesta = client.post(
+        reverse("api:matriz-nivel"),
+        {
+            "empleado_id": planta["empleado_4"].pk,
+            "estacion_id": planta["estacion_4"].pk,
+            "nivel": NivelHabilidad.EXPERTO,
+        },
+        content_type="application/json",
+    )
+
+    assert respuesta.status_code == 403
+    assert "otra línea" in respuesta.json()["error"]
+    assert not SkillMatrix.objects.exists()
+
+
+def test_staff_con_grupo_no_cruza_empleado_y_estacion_de_lineas_distintas(
+    client, usuario, planta
+):
+    """La regla exige que empleado y estación compartan la misma línea."""
+    client.force_login(usuario)
+
+    respuesta = client.post(
+        reverse("api:matriz-nivel"),
+        {
+            "empleado_id": planta["empleado"].pk,
+            "estacion_id": planta["estacion_4"].pk,
+            "nivel": NivelHabilidad.EXPERTO,
+        },
+        content_type="application/json",
+    )
+
+    assert respuesta.status_code == 403
+    assert "misma línea" in respuesta.json()["error"]
+    assert not SkillMatrix.objects.exists()
+
+
+def test_usuario_sin_grupo_de_linea_recibe_403(client, usuario_sin_linea, planta):
+    client.force_login(usuario_sin_linea)
+
+    respuesta = client.post(
+        reverse("api:matriz-nivel"),
+        {
+            "empleado_id": planta["empleado"].pk,
+            "estacion_id": planta["estacion"].pk,
+            "nivel": NivelHabilidad.EXPERTO,
+        },
+        content_type="application/json",
+    )
+
+    assert respuesta.status_code == 403
+    assert "línea asignada" in respuesta.json()["error"]
+    assert not SkillMatrix.objects.exists()
+
+
+def test_superusuario_edita_cualquier_linea(client, superusuario, planta):
+    client.force_login(superusuario)
+
+    respuesta = client.post(
+        reverse("api:matriz-nivel"),
+        {
+            "empleado_id": planta["empleado_4"].pk,
+            "estacion_id": planta["estacion_4"].pk,
+            "nivel": NivelHabilidad.INSTRUCTOR,
+        },
+        content_type="application/json",
+    )
+
+    assert respuesta.status_code == 200
+    assert SkillMatrix.objects.get().nivel == "Instructor"
 
 
 def test_anonimo_no_puede_escribir_en_la_matriz(client, planta):

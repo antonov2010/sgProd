@@ -5,6 +5,7 @@ futura ingesta por API (ERP/MES) deben aplicar las mismas validaciones.
 """
 
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -63,81 +64,206 @@ def hora_actual():
     return timezone.localtime().hour
 
 
+def fecha_de_la_guardia(turno, fecha=None):
+    """Fecha de la guardia a la que pertenece un turno.
+
+    El turno 3 (22:00–05:59) pertenece al día en que inicia la guardia: de
+    madrugada (00:00–05:59) la guardia en curso es la que arrancó ayer a las
+    22:00, y sus 8 horas viven en la misma ``Asignacion``. En cualquier otro
+    momento la fecha de planta es la de hoy. Si ``fecha`` llega explícita (una
+    corrección histórica), se respeta tal cual.
+    """
+    if fecha is not None:
+        return fecha
+    if turno == 3 and hora_actual() <= 5:
+        return timezone.localdate() - timedelta(days=1)
+    return timezone.localdate()
+
+
 def linea_del_jefe(jefe):
     """Línea a cargo del jefe. ``Linea.jefe_linea`` es la fuente de verdad (US-06)."""
     return Linea.objects.filter(jefe_linea=jefe).first() or jefe.linea
 
 
-def asignaciones_del_turno(linea, turno, asignacion_vigente=None, fecha=None):
-    """Asignaciones de la línea para el turno, una por estación.
+def _niveles_de(estaciones, asignaciones):
+    """Nivel de habilidad de cada operador asignado en su estación."""
+    return {
+        (empleado_id, estacion_id): nivel
+        for empleado_id, estacion_id, nivel in SkillMatrix.objects.filter(
+            estacion__in=estaciones,
+            empleado_id__in=[a.empleado_id for a in asignaciones.values() if a],
+        ).values_list("empleado_id", "estacion_id", "nivel")
+    }
 
-    Mientras la asignación vigente de RF-1.3 viva en la sesión del jefe, este
-    paso la convierte en filas de ``Asignacion``: la captura necesita un
-    registro en base de datos al cual colgar las piezas. Si la estación ya tiene
-    asignación pero todavía no tiene piezas capturadas, se actualiza al operador
-    vigente; si ya tiene piezas, se conserva para no reescribir el historial.
 
-    ``asignacion_vigente`` es el diccionario que guarda la matriz en sesión:
-    ``{"<estacion_id>": "<empleado_id>" | None}``.
+def _alerta_supervision(niveles, asignacion):
+    """US-09: alerta cuando el operador es Principiante o no tiene nivel."""
+    return niveles.get((asignacion.empleado_id, asignacion.estacion_id)) in (
+        None,
+        NivelHabilidad.PRINCIPIANTE,
+    )
+
+
+def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None):
+    """Persiste la asignación vigente de RF-1.3 como ``Asignacion`` del turno.
+
+    US-08 exige que la asignación aceptada quede registrada. La matriz llama a
+    esta función al confirmar la propuesta; la captura ya no escribe en base de
+    datos al abrirse. Reglas:
+
+    * las filas del turno se leen y bloquean dentro de la transacción, y se
+      crean con ``get_or_create``: confirmar dos veces no duplica estaciones;
+    * una estación que se envía sin operador queda descubierta: se borra su
+      asignación si aún no tiene piezas; si ya las tiene, se conserva;
+    * una persona no se repite en dos estaciones del mismo turno: si la otra
+      estación no tiene piezas se mueve, y si las tiene se conserva lo actual y
+      se reporta el conflicto;
+    * un operador dado de baja no se asigna (RF-1.4).
+
+    ``asignacion_vigente``: ``{"<estacion_id>": "<empleado_id>" | None}``.
+
+    Devuelve ``(estaciones, resultado, niveles, avisos)``; ``avisos`` son
+    mensajes en español para el jefe sobre estaciones conservadas o conflictos.
     """
-    fecha = fecha or timezone.localdate()
+    turno = turno or turno_de_la_hora(hora_actual())
+    fecha = fecha_de_la_guardia(turno, fecha)
     asignacion_vigente = asignacion_vigente or {}
     estaciones = list(Estacion.objects.filter(linea=linea).order_by("orden"))
     operadores = {e.id: e for e in obtener_personal_presente(linea)}
 
-    existentes = {
-        a.estacion_id: a
-        for a in Asignacion.objects.filter(
-            estacion__in=estaciones, fecha=fecha, turno=turno
-        ).select_related("empleado")
-    }
-
     resultado = {}
+    avisos = []
     with transaction.atomic():
+        # La lectura va dentro de la transacción y con bloqueo para que dos
+        # confirmaciones simultáneas no creen filas duplicadas.
+        existentes = {
+            asignacion.estacion_id: asignacion
+            for asignacion in Asignacion.objects.select_for_update()
+            .filter(estacion__in=estaciones, fecha=fecha, turno=turno)
+            .select_related("empleado")
+            .order_by("id")
+        }
+        por_empleado = {
+            asignacion.empleado_id: asignacion for asignacion in existentes.values()
+        }
+
         for estacion in estaciones:
             asignacion = existentes.get(estacion.id)
             vigente_id = asignacion_vigente.get(str(estacion.id))
             operador = operadores.get(int(vigente_id)) if vigente_id else None
 
-            if operador is not None:
-                if asignacion is None:
-                    asignacion = Asignacion.objects.create(
-                        empleado=operador, estacion=estacion, fecha=fecha, turno=turno
+            if operador is None:
+                # Limpiar la estación: solo se borra si no hay piezas capturadas.
+                if asignacion is not None:
+                    if asignacion.registros_horarios.exists():
+                        avisos.append(
+                            f"{estacion.nombre}: ya tenía piezas capturadas; se "
+                            f"conserva a {asignacion.empleado.nombre}."
+                        )
+                    else:
+                        empleado_id = asignacion.empleado_id
+                        asignacion.delete()
+                        existentes.pop(estacion.id, None)
+                        por_empleado.pop(empleado_id, None)
+                        asignacion = None
+                resultado[estacion.id] = asignacion
+                continue
+
+            if asignacion is not None and asignacion.empleado_id == operador.id:
+                resultado[estacion.id] = asignacion
+                continue
+
+            # La estación ya tiene piezas: no se reescribe su historial.
+            if asignacion is not None and asignacion.registros_horarios.exists():
+                avisos.append(
+                    f"{estacion.nombre}: ya tenía piezas capturadas; se conserva a "
+                    f"{asignacion.empleado.nombre} y no se asigna a "
+                    f"{operador.nombre}."
+                )
+                resultado[estacion.id] = asignacion
+                continue
+
+            # Una persona por estación: si ya está en otra, se mueve o se avisa.
+            otra = por_empleado.get(operador.id)
+            if otra is not None and otra.estacion_id != estacion.id:
+                if otra.registros_horarios.exists():
+                    actual = (
+                        f"se conserva a {asignacion.empleado.nombre}"
+                        if asignacion is not None
+                        else "queda descubierta"
                     )
-                elif (
-                    asignacion.empleado_id != operador.id
-                    and not asignacion.registros_horarios.exists()
-                ):
-                    asignacion.empleado = operador
-                    asignacion.save(update_fields=["empleado"])
+                    avisos.append(
+                        f"Conflicto: {operador.nombre} ya está asignado a "
+                        f"{otra.estacion.nombre} con piezas capturadas; "
+                        f"{estacion.nombre} {actual}."
+                    )
+                    resultado[estacion.id] = asignacion
+                    continue
+
+                # La estación anterior no tiene piezas: se libera para no
+                # duplicar al operador en dos estaciones del mismo turno.
+                existentes.pop(otra.estacion_id, None)
+                if asignacion is None:
+                    otra.estacion = estacion
+                    otra.save(update_fields=["estacion"])
+                    existentes[estacion.id] = otra
+                    por_empleado[operador.id] = otra
+                    resultado[estacion.id] = otra
+                    continue
+                por_empleado.pop(asignacion.empleado_id, None)
+                otra.delete()
+
+            if asignacion is None:
+                asignacion, _ = Asignacion.objects.get_or_create(
+                    estacion=estacion,
+                    fecha=fecha,
+                    turno=turno,
+                    defaults={"empleado": operador},
+                )
+                existentes[estacion.id] = asignacion
+            else:
+                asignacion.empleado = operador
+                asignacion.save(update_fields=["empleado"])
+
+            por_empleado[operador.id] = asignacion
             resultado[estacion.id] = asignacion
 
-        niveles = {
-            (empleado_id, estacion_id): nivel
-            for empleado_id, estacion_id, nivel in SkillMatrix.objects.filter(
-                estacion__in=estaciones,
-                empleado_id__in=[a.empleado_id for a in resultado.values() if a],
-            ).values_list("empleado_id", "estacion_id", "nivel")
-        }
+        niveles = _niveles_de(estaciones, resultado)
         for asignacion in resultado.values():
             if asignacion is None:
                 continue
-            alerta = niveles.get((asignacion.empleado_id, asignacion.estacion_id)) in (
-                None,
-                NivelHabilidad.PRINCIPIANTE,
-            )
+            alerta = _alerta_supervision(niveles, asignacion)
             if asignacion.alerta_supervision != alerta:
                 asignacion.alerta_supervision = alerta
                 asignacion.save(update_fields=["alerta_supervision"])
 
-    return estaciones, resultado, niveles
+    return estaciones, resultado, niveles, avisos
 
 
-def estaciones_para_capturar(linea, turno, hora, asignacion_vigente=None, fecha=None):
+def asignaciones_del_turno(linea, turno, fecha=None):
+    """Asignaciones ya registradas de la línea para el turno (solo lectura).
+
+    La asignación vigente se guarda al confirmarla en la matriz (US-08); esta
+    consulta no crea ni modifica filas.
+    """
+    fecha = fecha_de_la_guardia(turno, fecha)
+    estaciones = list(Estacion.objects.filter(linea=linea).order_by("orden"))
+    resultado = {
+        a.estacion_id: a
+        for a in Asignacion.objects.filter(
+            estacion__in=estaciones,
+            fecha=fecha,
+            turno=turno,
+            empleado__activo=True,
+        ).select_related("empleado")
+    }
+    return estaciones, resultado, _niveles_de(estaciones, resultado)
+
+
+def estaciones_para_capturar(linea, turno, hora, fecha=None):
     """Filas de la pantalla de captura para una hora del turno."""
-    estaciones, asignaciones, niveles = asignaciones_del_turno(
-        linea, turno, asignacion_vigente, fecha
-    )
+    fecha = fecha_de_la_guardia(turno, fecha)
+    estaciones, asignaciones, niveles = asignaciones_del_turno(linea, turno, fecha)
     registros = {
         r.asignacion_id: r
         for r in RegistroCalidadHorario.objects.filter(
@@ -146,7 +272,7 @@ def estaciones_para_capturar(linea, turno, hora, asignacion_vigente=None, fecha=
     }
     filas = []
     for estacion in estaciones:
-        asignacion = asignaciones[estacion.id]
+        asignacion = asignaciones.get(estacion.id)
         registro = registros.get(asignacion.id) if asignacion else None
         primer_defecto = registro.defectos.first() if registro else None
         filas.append(
@@ -163,7 +289,7 @@ def estaciones_para_capturar(linea, turno, hora, asignacion_vigente=None, fecha=
 
 def historial_del_turno(linea, turno, fecha=None):
     """Registros ya guardados del turno, de la hora más reciente a la más antigua."""
-    fecha = fecha or timezone.localdate()
+    fecha = fecha_de_la_guardia(turno, fecha)
     orden_hora = {h: i for i, h in enumerate(horas_del_turno(turno))}
     registros = list(
         RegistroCalidadHorario.objects.filter(
@@ -196,7 +322,11 @@ def registrar_captura(
     linea, asignacion_id, hora, aceptadas, rechazadas, retrabajo, defecto_id=None, fecha=None
 ):
     """Guarda (o corrige) las piezas de una estación en una hora del turno."""
-    fecha = fecha or timezone.localdate()
+    # El turno en curso se resuelve con el reloj: de madrugada el turno 3 sigue
+    # siendo el de la guardia que empezó ayer (B-05).
+    turno_actual = turno_de_la_hora(hora_actual())
+    fecha_guardia = fecha_de_la_guardia(turno_actual)
+    fecha = fecha or fecha_guardia
     valores = {
         "piezas_aceptadas": _piezas(aceptadas, "Aceptadas"),
         "piezas_rechazadas": _piezas(rechazadas, "Rechazadas"),
@@ -225,6 +355,13 @@ def registrar_captura(
         raise CapturaInvalida("La estación no pertenece a tu línea o a este turno.")
     if hora not in horas_del_turno(asignacion.turno):
         raise CapturaInvalida("La hora no pertenece a este turno.")
+
+    # B-06: solo se captura el turno en curso. Sin esta regla, un POST con la
+    # asignación del turno anterior corregía un turno ya cerrado. La restricción
+    # aplica a la fecha de la guardia en curso; una fecha histórica sigue siendo
+    # corregible.
+    if fecha == fecha_guardia and asignacion.turno != turno_actual:
+        raise CapturaInvalida("Ese turno ya está cerrado; solo se captura el turno en curso.")
 
     with transaction.atomic():
         registro = (

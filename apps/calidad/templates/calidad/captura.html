@@ -76,7 +76,7 @@
 
   {% if sin_asignar %}
     <div class="sg-card" style="margin-bottom: 1rem;">
-      <strong>{{ sin_asignar }} estación{{ sin_asignar|pluralize:"es" }} sin operador.</strong>
+      <strong>{{ sin_asignar }} {% if sin_asignar == 1 %}estación{% else %}estaciones{% endif %} sin operador.</strong>
       Guarda la asignación vigente en la
       <a href="{% url 'personal:matriz_competencias' %}">Matriz de Competencias</a> para poder capturarla{{ sin_asignar|pluralize:"s" }}.
     </div>
