@@ -183,15 +183,14 @@
 }
 
 /* ---------- Tablero gerencial ---------- */
-/* Espaciado uniforme entre las secciones del tablero. */
-:root { --sg-space: 1.5rem; }
-
+/* Separación fija entre secciones: el hueco total es 70px e incluye el trazo
+   de 1px; las secciones no aportan margen, así que no se suman espaciados. */
 .sg-dash-section { margin: 0; }
 .sg-dash-title { margin: 0 0 .35rem; font-size: 1.3rem; }
 /* Un solo trazo: sin bordes dobles ni separadores del navegador. */
 .sg-dash-sep {
   height: 0;
-  margin: var(--sg-space) 0;
+  margin: calc((70px - 1px) / 2) 0;
   border: 0;
   border-top: 1px solid var(--sg-line);
 }
@@ -209,9 +208,9 @@
   will-change: transform;
 }
 .tg-carrusel.is-carrusel {
+  /* El padding/margen de 4px ya no hace falta sin el anillo de la tarjeta
+     activa, y hacía que el carrusel invadiera el margen del separador. */
   overflow: hidden;
-  padding: 4px;
-  margin: -4px;
 }
 .tg-carrusel.is-carrusel .tg-carrusel__pista { display: flex; gap: .85rem; }
 .tg-carrusel.is-carrusel .tg-linea {
@@ -271,9 +270,5 @@
   margin: 0;
 }
 .sg-bonos__rango { color: var(--sg-muted); }
-/* El foco viaja al bloque tras paginar; el anillo marca dónde cambió. */
-.sg-bonos__bloque:focus {
-  outline: 3px solid var(--sg-thread);
-  outline-offset: 4px;
-  border-radius: 4px;
-}
+/* El foco programático se conserva, pero sin anillo visible al paginar. */
+.sg-bonos__bloque:focus { outline: none; }

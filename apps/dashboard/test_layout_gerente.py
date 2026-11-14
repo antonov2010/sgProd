@@ -126,6 +126,19 @@ def doce_elegibles(entrar):
         )
 
 
+def test_el_html_no_expone_comentarios_de_plantilla(client, captura_gerente):
+    html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
+
+    assert "{#" not in html
+    assert "Bloque paginado de elegibles" not in html
+
+    fragmento = client.get(
+        "/dashboard/gerente/?pagina=1&fragmento=bonos"
+    ).content.decode()
+    assert "{#" not in fragmento
+    assert "Bloque paginado de elegibles" not in fragmento
+
+
 def test_secciones_en_orden_y_con_separadores(client, captura_gerente):
     html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
 

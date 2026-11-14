@@ -1,6 +1,8 @@
-{# Bloque paginado de elegibles a bono.
+{% comment %}
+   Bloque paginado de elegibles a bono.
    Se incluye desde gerente.html y también se devuelve solo cuando la pantalla
-   pide la página por fetch (?fragmento=bonos). Conserva siempre el mismo id. #}
+   pide la página por fetch (?fragmento=bonos). Conserva siempre el mismo id.
+{% endcomment %}
 <div id="bonos-tabla" class="sg-bonos__bloque" tabindex="-1"
      data-pagina="{{ pagina_elegibles.number }}"
      data-total-paginas="{{ pagina_elegibles.paginator.num_pages }}">

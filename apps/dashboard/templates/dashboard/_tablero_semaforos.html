@@ -40,36 +40,37 @@
   .tg-ayuda { margin: 0 0 .75rem; color: var(--tg-muted); font-size: .95rem; }
   .tg-lineas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
   .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column;
-              padding: .7rem .85rem .75rem; container-type: inline-size; }
-  .tg-linea.is-activa { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+              gap: .85rem; padding: 1.05rem 1.15rem 1.1rem; container-type: inline-size; }
+  /* La tarjeta activa se distingue por su barra de estado, sin anillo. */
   /* Cabecera: FPY grande, sparkline a la derecha y una sola línea de contexto. */
-  .tg-linea .tg-cab { margin-bottom: .15rem; }
+  .tg-linea .tg-cab { margin-bottom: 0; }
   .tg-linea .tg-cab h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
                          font-size: 1.05rem; }
-  .tg-linea .tg-badge { padding: .05rem .5rem; font-size: .8rem; }
+  .tg-linea .tg-badge { padding: .05rem .5rem; font-size: .82rem; }
   .tg-cabecera { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
   .tg-fpy { min-width: 0; font: 700 1.85rem/1.05 var(--sg-font-head); font-variant-numeric: tabular-nums;
             white-space: nowrap; }
   .tg-spark { width: 140px; max-width: 42%; height: auto; flex: 0 1 140px; }
-  .tg-fpy__pie { display: flex; align-items: baseline; gap: .5rem; margin: .15rem 0 .4rem;
+  .tg-fpy__pie { display: flex; align-items: baseline; gap: .5rem; margin: 0;
                  min-width: 0; font-size: .8rem; color: var(--tg-muted); }
   .tg-fpy__etiqueta { white-space: nowrap; }
   .tg-jefe { min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis;
              white-space: nowrap; font-size: .8rem; text-align: right; }
   .tg-jefe b { color: var(--sg-ink); font-weight: 700; }
-  .tg-personal { margin: 0 0 .5rem; padding: .35rem 0; border-top: 1px solid var(--tg-line); font-size: .85rem; }
+  .tg-personal { margin: 0; padding: .55rem 0; border-top: 1px solid var(--tg-line); font-size: .85rem; }
   .tg-total { margin: 0; }
   .tg-total b { font-weight: 700; font-variant-numeric: tabular-nums; }
-  .tg-nombres { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .3rem; }
-  .tg-nombres span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-                     padding: .05rem .5rem; border: 1px solid var(--tg-line); border-radius: 999px;
+  .tg-nombres { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+  .tg-nombres span { display: inline-flex; align-items: center; max-width: 100%; min-height: 1.8rem;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                     padding: 0 .6rem; border: 1px solid var(--tg-line); border-radius: 999px;
                      font-size: .8rem; }
   .tg-nombres .mas { color: var(--tg-muted); border-style: dashed; }
   /* Estaciones en 4 filas × 2 columnas dentro de la tarjeta. */
   .tg-estaciones { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-                   column-gap: .85rem; margin: 0 0 .55rem; padding: 0; }
+                   column-gap: .85rem; row-gap: .3rem; margin: 0; padding: 0; }
   .tg-estaciones li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
-                      column-gap: .35rem; min-height: 2.2rem; padding: .1rem 0;
+                      column-gap: .35rem; min-height: 2.8rem; padding: .1rem 0;
                       border-top: 1px solid var(--tg-line); }
   .tg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
   .tg-dot.is-ok { background: var(--tg-ok); } .tg-dot.is-warn { background: var(--tg-warn); }
@@ -77,13 +78,13 @@
   .tg-estaciones .tg-dot { width: 10px; height: 10px; }
   .tg-est { display: grid; min-width: 0; }
   .tg-est .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-               font-size: .9rem; line-height: 1.1; }
+               font-size: .95rem; line-height: 1.1; }
   .tg-est .meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline;
                   column-gap: .3rem; line-height: 1.15; }
   .tg-est .v { grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap;
-               font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+               font-size: .95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
   .tg-est .e { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-               white-space: nowrap; color: var(--tg-muted); font-size: .8rem; }
+               white-space: nowrap; color: var(--tg-muted); font-size: .82rem; }
   /* Un solo estilo de botón para todas las tarjetas. */
   .tg-ver { margin-top: auto; min-height: 48px; width: 100%; padding: .45rem .9rem;
             border: 2px solid var(--sg-teal); border-radius: 10px;
@@ -97,7 +98,7 @@
   }
   /* Si la tarjeta queda angosta (carrusel en pantallas medianas), una columna
      evita recortar el estado de la estación. */
-  @container (max-width: 300px) {
+  @container (max-width: 280px) {
     .tg-estaciones { grid-template-columns: minmax(0, 1fr); }
   }
   /* Tarjetas mínimas (carrusel a 3 en pantallas muy angostas): la cabecera
