@@ -36,6 +36,12 @@ También deja:
 - 4 480 registros horarios (8 horas por asignación);
 - una `Configuración de bono cero defectos` activa de **14 días**.
 
+> **Variación de calidad:** para que el tablero no quede todo en verde, el
+> último día (hoy) la **Línea 4 queda con FPY 75.0 %** y la **Línea 6 con
+> FPY 83.0 %**; el resto de líneas se mantiene alrededor de 99.5 %. Las
+> rechazadas se reparten solo entre operadores que **no** son los tres casos de
+> US-15, así que la lista de bonos y sus detalles no cambian.
+
 Si tu base ya tenía datos y no quieres borrarlos, crea otra base y apunta
 `DB_NAME` a ella antes de correr el seed (ver
 [guía del ambiente](00_guia_ambiente_desarrollo.md), §14.8.1).

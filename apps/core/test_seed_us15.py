@@ -6,6 +6,7 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.calidad.models import Asignacion, DetalleDefecto, RegistroCalidadHorario
@@ -120,3 +121,96 @@ def test_seed_sin_us15_tambien_ubica_al_personal_y_deja_un_principiante():
 def test_seed_us15_exige_reset_para_ser_reproducible():
     with pytest.raises(CommandError, match="--reset"):
         call_command("seed_demo", empleados=10, us15=True, stdout=StringIO())
+
+
+def _fpy_ultimo_dia(nombre_linea):
+    """FPY del día más reciente con las sumas reales de RegistroCalidadHorario."""
+    totales = RegistroCalidadHorario.objects.filter(
+        asignacion__estacion__linea__nombre=nombre_linea,
+        asignacion__fecha=timezone.localdate(),
+    ).aggregate(
+        aceptadas=Sum("piezas_aceptadas"),
+        rechazadas=Sum("piezas_rechazadas"),
+        retrabajo=Sum("piezas_retrabajo"),
+    )
+    total = totales["aceptadas"] + totales["rechazadas"] + totales["retrabajo"]
+    return round(100 * totales["aceptadas"] / total, 1)
+
+
+def test_seed_us15_variar_calidad_de_linea_4_y_linea_6():
+    salida = _cargar_escenario_us15()
+
+    assert _fpy_ultimo_dia("Línea 4") == 75.0
+    assert _fpy_ultimo_dia("Línea 6") == 83.0
+    assert "Línea 4 75.0 %" in salida
+    assert "Línea 6 83.0 %" in salida
+
+
+def test_seed_us15_la_variacion_respeta_los_casos_de_bono():
+    _cargar_escenario_us15()
+    hoy = timezone.localdate()
+
+    assert Asignacion.objects.count() == 560
+    assert RegistroCalidadHorario.objects.count() == 4480
+
+    elegibles = {
+        item["numero_empleado"] for item in calcular_elegibles_bono()["elegibles"]
+    }
+    for nombre in ("Línea 4", "Línea 6"):
+        operadores = list(
+            Empleado.objects.filter(
+                linea__nombre=nombre, rol__tipo_rol="operador", activo=True
+            ).order_by("numero_empleado")
+        )
+        limpio, antiguo, reciente = operadores[:3]
+
+        assert not RegistroCalidadHorario.objects.filter(
+            asignacion__empleado=limpio, piezas_rechazadas__gt=0
+        ).exists()
+        assert limpio.numero_empleado in elegibles
+
+        # El caso antiguo conserva solo sus defectos de hace 10 días (todas sus
+        # asignaciones de ese día en la hora 9), sin rechazadas de hoy.
+        detalles_antiguo = list(
+            DetalleDefecto.objects.filter(
+                registro__asignacion__empleado=antiguo
+            )
+        )
+        assert len(detalles_antiguo) == Asignacion.objects.filter(
+            empleado=antiguo, fecha=hoy - timedelta(days=10)
+        ).count()
+        assert {d.registro.asignacion.fecha for d in detalles_antiguo} == {
+            hoy - timedelta(days=10)
+        }
+        assert {d.registro.hora for d in detalles_antiguo} == {9}
+        assert {d.cantidad for d in detalles_antiguo} == {2}
+
+        # El caso reciente conserva solo su defecto de ayer (hora 10).
+        detalles_reciente = list(
+            DetalleDefecto.objects.filter(
+                registro__asignacion__empleado=reciente
+            )
+        )
+        assert len(detalles_reciente) == Asignacion.objects.filter(
+            empleado=reciente, fecha=hoy - timedelta(days=1)
+        ).count()
+        assert {d.registro.asignacion.fecha for d in detalles_reciente} == {
+            hoy - timedelta(days=1)
+        }
+        assert {d.registro.hora for d in detalles_reciente} == {10}
+        assert {d.cantidad for d in detalles_reciente} == {1}
+
+        assert antiguo.numero_empleado not in elegibles
+        assert reciente.numero_empleado not in elegibles
+
+    # Cada rechazada repartida hoy tiene su DetalleDefecto con la misma cantidad.
+    for registro in RegistroCalidadHorario.objects.filter(
+        asignacion__estacion__linea__nombre__in=("Línea 4", "Línea 6"),
+        asignacion__fecha=hoy,
+        piezas_rechazadas__gt=0,
+    ):
+        assert registro.piezas_rechazadas <= 9999
+        assert (
+            sum(registro.defectos.values_list("cantidad", flat=True))
+            == registro.piezas_rechazadas
+        )

@@ -62,6 +62,14 @@ HORAS_TURNO_1 = range(6, 14)
 DIAS_DEFECTO_ANTIGUO = 10
 DIAS_DEFECTO_RECIENTE = 1
 
+# Variación de calidad para que el tablero no quede todo en verde (US-13):
+# el último día, estas líneas bajan su FPY con rechazadas repartidas solo entre
+# operadores que no son los tres casos de US-15.
+FPY_ULTIMO_DIA = {"Línea 4": 75.0, "Línea 6": 83.0}
+
+# Límite del modelo para ``RegistroCalidadHorario.piezas_rechazadas``.
+MAX_RECHAZADAS_POR_REGISTRO = 9999
+
 
 class Command(BaseCommand):
     help = "Carga el escenario maestro de demo desde JSON (US-04)."
@@ -167,8 +175,11 @@ class Command(BaseCommand):
             self._asignar_lineas(lineas, jefes)
             self._garantizar_principiante_por_linea(lineas, habilidades)
             casos_us15 = None
+            calidad_us15 = []
             if options["us15"]:
-                casos_us15 = self._datos_us15(lineas, estaciones, defectos)
+                casos_us15, calidad_us15 = self._datos_us15(
+                    lineas, estaciones, defectos
+                )
 
         self._resumen(
             lineas=lineas,
@@ -179,6 +190,7 @@ class Command(BaseCommand):
             defectos=defectos,
             habilidades=habilidades,
             casos_us15=casos_us15,
+            calidad_us15=calidad_us15,
         )
 
     # ------------------------------------------------------------------
@@ -424,6 +436,7 @@ class Command(BaseCommand):
                 }
             )
             casos_por_linea[linea.id] = {
+                "limpio": caso_limpio.id,
                 "antiguo": caso_antiguo.id if caso_antiguo else None,
                 "reciente": caso_reciente.id if caso_reciente else None,
             }
@@ -482,6 +495,10 @@ class Command(BaseCommand):
                     )
                 )
 
+        calidad = self._variar_calidad_ultimo_dia(
+            registros, lineas, casos_por_linea, hoy
+        )
+
         RegistroCalidadHorario.objects.bulk_create(registros, batch_size=500)
         DetalleDefecto.objects.bulk_create(
             [
@@ -495,7 +512,104 @@ class Command(BaseCommand):
             ],
             batch_size=500,
         )
-        return casos
+        return casos, calidad
+
+    @staticmethod
+    def _rechazadas_para_fpy(aceptadas, retrabajo, objetivo):
+        """Menor ``r`` entero que deja ``round(100*a/(a+r+t), 1) == objetivo``.
+
+        El FPY decrece de forma monótona al agregar rechazadas. Se arranca justo
+        por debajo del primer denominador que puede redondear al objetivo y se
+        avanza hasta acertar; así se garantiza que ``r`` sea el mínimo.
+        """
+        if aceptadas <= 0:
+            raise CommandError(
+                "No se puede ajustar el FPY de una línea sin piezas aceptadas."
+            )
+
+        denominador = 100 * aceptadas / (objetivo + 0.05)
+        rechazadas = max(0, int(denominador) - aceptadas - retrabajo - 1)
+        while True:
+            valor = round(
+                100 * aceptadas / (aceptadas + rechazadas + retrabajo), 1
+            )
+            if valor == objetivo:
+                return rechazadas
+            if valor < objetivo:
+                raise CommandError(
+                    f"No hay rechazadas enteras que dejen el FPY en {objetivo} % "
+                    f"(aceptadas={aceptadas}, retrabajo={retrabajo})."
+                )
+            rechazadas += 1
+
+    def _variar_calidad_ultimo_dia(self, registros, lineas, casos_por_linea, hoy):
+        """Baja el FPY de dos líneas repartiendo rechazadas en el último día.
+
+        Las rechazadas se calculan con las sumas del día y se reparten de forma
+        pareja solo entre registros de hoy que no pertenecen a los tres
+        operadores de US-15: el caso limpio sigue elegible y los casos de
+        defecto conservan intacta su historia.
+        """
+        lineas_por_nombre = {linea.nombre: linea for linea in lineas}
+        calidad = []
+        for nombre, objetivo in FPY_ULTIMO_DIA.items():
+            linea = lineas_por_nombre.get(nombre)
+            if linea is None:
+                continue
+
+            registros_dia = [
+                registro
+                for registro in registros
+                if registro.asignacion.estacion.linea_id == linea.id
+                and registro.asignacion.fecha == hoy
+            ]
+            if not registros_dia:
+                continue
+
+            aceptadas = sum(
+                registro.piezas_aceptadas for registro in registros_dia
+            )
+            retrabajo = sum(
+                registro.piezas_retrabajo for registro in registros_dia
+            )
+            rechazadas = self._rechazadas_para_fpy(
+                aceptadas, retrabajo, objetivo
+            )
+
+            excluidos = set(casos_por_linea.get(linea.id, {}).values()) - {None}
+            elegibles = [
+                registro
+                for registro in registros_dia
+                if registro.asignacion.empleado_id not in excluidos
+            ]
+            if not elegibles:
+                raise CommandError(
+                    f"{nombre} no tiene operadores fuera de los casos US-15 "
+                    "para repartir las rechazadas de la variación de calidad."
+                )
+
+            base, sobrantes = divmod(rechazadas, len(elegibles))
+            for indice, registro in enumerate(elegibles):
+                extra = base + (1 if indice < sobrantes else 0)
+                if (
+                    registro.piezas_rechazadas + extra
+                    > MAX_RECHAZADAS_POR_REGISTRO
+                ):
+                    raise CommandError(
+                        f"El registro {registro.asignacion_id}/{registro.hora} "
+                        f"de {nombre} superaría las "
+                        f"{MAX_RECHAZADAS_POR_REGISTRO} rechazadas."
+                    )
+                registro.piezas_rechazadas += extra
+
+            total = aceptadas + rechazadas + retrabajo
+            calidad.append(
+                {
+                    "linea": nombre,
+                    "fpy": round(100 * aceptadas / total, 1),
+                }
+            )
+        return calidad
 
     def _resumen(
         self,
@@ -508,6 +622,7 @@ class Command(BaseCommand):
         defectos,
         habilidades,
         casos_us15=None,
+        calidad_us15=None,
     ):
         self.stdout.write("")
         self.stdout.write(
@@ -555,6 +670,12 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"  Registros:     {RegistroCalidadHorario.objects.count()}"
             )
+            if calidad_us15:
+                variacion = " · ".join(
+                    f"{item['linea']} {item['fpy']:.1f} %"
+                    for item in calidad_us15
+                )
+                self.stdout.write(f"  Calidad:       {variacion}")
             self.stdout.write(
                 f"  Configuración: {ConfiguracionBono.objects.filter(activo=True).count()} activa"
             )
