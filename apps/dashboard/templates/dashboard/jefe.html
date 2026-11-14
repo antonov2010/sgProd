@@ -3,7 +3,7 @@
 {% block title %}Tablero de turno · SG-Prod{% endblock %}
 
 {% block nav_links %}
-  <span style="color: white; font-weight: 500; margin-right: 15px;">
+  <span class="sg-nav-user">
     {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
   </span>
   <a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
@@ -27,7 +27,7 @@
    <p class="sg-muted">Quién está asignado y qué estaciones necesitan apoyo.</p>
 
     <!-- Botón estilizado dentro del cuadro con la línea punteada del diseño -->
-    <a href="{% url 'personal:matriz_competencias' %}" class="sg-empty" style="display: block; text-decoration: none; background-color: #0d5c75; color: #ffffff; font-weight: 600; text-align: center; border-style: solid; border-color: #0d5c75;">
+    <a href="{% url 'personal:matriz_competencias' %}" class="sg-empty sg-empty--action">
       Consultar Matriz de Competencias →
     </a>
   </article>
@@ -36,7 +36,7 @@
     <p class="sg-eyebrow">Calidad</p>
     <h2>Captura de la hora</h2>
     <p class="sg-muted">Aceptadas, rechazadas y retrabajo por estación.</p>
-    <a href="{% url 'calidad:captura' %}" class="sg-empty" style="display: block; text-decoration: none; background-color: #0d5c75; color: #ffffff; font-weight: 600; text-align: center; border-style: solid; border-color: #0d5c75;">
+    <a href="{% url 'calidad:captura' %}" class="sg-empty sg-empty--action">
       Capturar la hora →
     </a>
   </article>

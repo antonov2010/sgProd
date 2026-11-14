@@ -1,10 +1,10 @@
 {# Tablero At-a-Glance (US-13). Se incluye desde gerente.html. #}
 {# Datos de ejemplo hasta conectar los registros reales. #}
 <style>
-  .tg { --tg-ok: var(--sg-ok, #1E8E4E); --tg-warn: var(--sg-warn, #C98A00); --tg-bad: var(--sg-bad, #C8322B);
-        --tg-ok-fg: var(--sg-ok-fg, #1E8E4E); --tg-warn-fg: var(--sg-warn-fg, #8A5F00); --tg-bad-fg: var(--sg-bad-fg, #C8322B);
-        --tg-line: var(--sg-line, rgba(128,128,128,.35)); --tg-card: var(--sg-card, transparent);
-        --tg-muted: var(--sg-muted, rgba(128,128,128,.95)); --tg-focus: var(--sg-thread, #F2B705);
+  .tg { --tg-ok: var(--sg-ok); --tg-warn: var(--sg-warn); --tg-bad: var(--sg-bad);
+        --tg-ok-fg: var(--sg-ok-fg); --tg-warn-fg: var(--sg-warn-fg); --tg-bad-fg: var(--sg-bad-fg);
+        --tg-line: var(--sg-line); --tg-card: var(--sg-card);
+        --tg-muted: var(--sg-muted); --tg-focus: var(--sg-thread);
         margin-bottom: 1.5rem; }
   .tg * { box-sizing: border-box; }
   .tg h3 { margin: 0; }
@@ -50,7 +50,7 @@
   .tg-estaciones .e { min-width: 5.2rem; white-space: nowrap; text-align: right; color: var(--tg-muted); font-size: .9rem; }
   .tg-ver { margin-top: auto; min-height: 48px; width: 100%; border: 2px solid var(--tg-focus); border-radius: 10px;
             background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
-  .tg-ver:hover, .tg-linea.is-activa .tg-ver { background: var(--tg-focus); color: #16222E; }
+  .tg-ver:hover, .tg-linea.is-activa .tg-ver { background: var(--tg-focus); color: var(--sg-on-thread); }
   .tg-ver:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
   .tg-grafica { width: 100%; height: auto; display: block; }
   .tg-figura { margin: 0; }
@@ -173,7 +173,7 @@
         <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
         <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
         {% for p in t.puntos %}
-        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card, #fff)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
+        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
         {% endfor %}
         {% for h in t.horas %}
         <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>

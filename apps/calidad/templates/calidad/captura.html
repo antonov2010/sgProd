@@ -3,7 +3,7 @@
 {% block title %}Captura de la hora · SG-Prod{% endblock %}
 
 {% block nav_links %}
-  <span style="color: white; font-weight: 500; margin-right: 15px;">
+  <span class="sg-nav-user">
     {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
   </span>
   <a href="{% url 'dashboard:pantalla_jefe' %}">Mi turno</a>
@@ -18,7 +18,7 @@
     min-height: var(--sg-touch); min-width: 88px; padding: 0 1rem; border-radius: var(--sg-radius);
     border: 2px solid var(--sg-line); background: var(--sg-card); color: var(--sg-ink);
     font: 600 1.1rem var(--sg-font-head); text-decoration: none; }
-  .cap-horas a[aria-current="true"] { background: var(--sg-primary); border-color: var(--sg-primary); color: #fff; }
+  .cap-horas a[aria-current="true"] { background: var(--sg-primary); border-color: var(--sg-primary); color: var(--sg-on-solid); }
   .cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1rem; }
   .cap-card { display: flex; flex-direction: column; gap: .75rem; }
   .cap-card[data-estado="guardado"] { border-color: var(--sg-ok); }
@@ -85,7 +85,7 @@
     <div class="sg-card" style="margin-bottom: 1rem;">
       <strong>{{ sin_asignar }} {% if sin_asignar == 1 %}estación{% else %}estaciones{% endif %} sin operador.</strong>
       Guarda la asignación vigente en la
-      <a href="{% url 'personal:matriz_competencias' %}">Matriz de Competencias</a> para poder capturarla{{ sin_asignar|pluralize:"s" }}.
+      <a href="{% url 'personal:matriz_competencias' %}" class="sg-link">Matriz de Competencias</a> para poder capturarla{{ sin_asignar|pluralize:"s" }}.
     </div>
   {% endif %}
 

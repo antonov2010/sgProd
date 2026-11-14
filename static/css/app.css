@@ -15,6 +15,11 @@
   text-decoration: none;
 }
 .sg-nav .sg-logo b { color: var(--sg-thread); }
+.sg-nav-user {
+  color: var(--sg-on-solid);
+  font-weight: 500;
+  margin-right: 15px;
+}
 
 .sg-flashes {
   display: grid;
@@ -114,6 +119,21 @@
   border-radius: var(--sg-radius);
   color: var(--sg-muted);
   font-size: .95rem;
+}
+/* Acceso destacado que conserva el marco punteado del estado vacío. */
+.sg-empty--action {
+  display: block;
+  border-style: solid;
+  border-color: var(--sg-primary);
+  background: var(--sg-primary);
+  color: var(--sg-on-solid);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.sg-empty--action:hover {
+  background: var(--sg-primary-dark);
+  border-color: var(--sg-primary-dark);
 }
 
 @media (max-width: 640px) {

@@ -1,5 +1,7 @@
 /* SG-Prod · theme.css · Sistema visual compartido (Módulo 1 y Módulo 2) */
 :root {
+  /* Los controles nativos (select, input, barras) siguen el tema activo. */
+  color-scheme: light;
   --sg-ink: #16222E;        /* texto y menú */
   --sg-teal: #0E6478;       /* color principal */
   --sg-teal-dark: #0A4A5A;
@@ -17,6 +19,46 @@
   --sg-ok-bg: #E3F4EA; --sg-warn-bg: #FFF1CC; --sg-bad-bg: #FBE4E2;
   /* Texto de etiquetas: oscurecido para mantener ≥ 4.5:1 sobre su fondo. */
   --sg-ok-fg: #176E3B; --sg-warn-fg: #8A5F00; --sg-bad-fg: #A82B25;
+
+  /* Enlaces de texto y superficies suaves de tablas.
+     --sg-link sobre tarjeta: 6.75:1; sobre el fondo de pantalla: 6.15:1. */
+  --sg-link: #0E6478;
+  --sg-panel-soft: #F8FAFC;
+  --sg-row-alt: #F8FAFC;
+  --sg-row-hover: #F1F5F9;
+  --sg-line-soft: #EDF2F7;
+
+  /* Niveles de habilidad. Cada color de texto se mide sobre el fondo de su
+     propio nivel (WCAG 2.1, (L1+0.05)/(L2+0.05)): principiante 5.03:1,
+     autónomo 5.85:1, experto 5.52:1, instructor 5.70:1, sin nivel 6.92:1. */
+  --sg-level-principiante-fg: #8A5F00;
+  --sg-level-principiante-bg: #FFF1CC;
+  --sg-level-principiante-border: #F59E0B;
+  --sg-level-autonomo-fg: #0E6478;
+  --sg-level-autonomo-bg: #E0F2F7;
+  --sg-level-autonomo-border: #7CC4D6;
+  --sg-level-experto-fg: #176E3B;
+  --sg-level-experto-bg: #E3F4EA;
+  --sg-level-experto-border: #7BC79B;
+  --sg-level-instructor-fg: #A82B25;
+  --sg-level-instructor-bg: #FBE4E2;
+  --sg-level-instructor-border: #E9A19B;
+  --sg-level-sinnivel-fg: #475569;
+  --sg-level-sinnivel-bg: #F1F5F9;
+  --sg-level-sinnivel-border: #CBD5E1;
+
+  /* Estación descubierta: texto rojo sobre ámbar muy claro (6.67:1). */
+  --sg-gap-fg: #A82B25;
+  --sg-gap-bg: #FFFBEB;
+  --sg-gap-border: #F59E0B;
+
+  /* Texto sobre rellenos sólidos (botones, cabeceras y avisos). */
+  --sg-on-solid: #FFFFFF;   /* sobre --sg-primary: 6.75:1 claro, 4.95:1 oscuro */
+  --sg-on-thread: #16222E;  /* tinta sobre --sg-thread (amarillo): 8.87:1 */
+  --sg-action-ok-bg: #176E3B; /* blanco encima: 6.31:1 */
+  --sg-toast-ok-bg: #15803D; --sg-toast-ok-border: #22C55E;
+  --sg-toast-bad-bg: #B91C1C; --sg-toast-bad-border: #EF4444;
+
   --sg-radius: 10px;
   --sg-touch: 56px;         /* alto mínimo de botones en planta */
   --sg-font-head: "Barlow Semi Condensed", "Arial Narrow", sans-serif;
@@ -24,12 +66,49 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --sg-ink: #E8EEF0; --sg-paper: #0F171D; --sg-card: #18232B; --sg-line: #2C3B45;
     --sg-muted: #9AACB6; --sg-teal: #3FB0C8; --sg-teal-dark: #2A8CA3;
     --sg-nav: #1F7E94; --sg-primary: #1A7A92; --sg-primary-dark: #146679;
     --sg-ok: #4CC97C; --sg-warn: #F0B24A; --sg-bad: #F0736B;
     --sg-ok-fg: #7EE0A6; --sg-warn-fg: #FFD066; --sg-bad-fg: #FF9A92;
     --sg-ok-bg: #12301F; --sg-warn-bg: #3A2D06; --sg-bad-bg: #3B1512;
+
+    /* Enlaces y superficies suaves. --sg-link sobre tarjeta: 9.25:1;
+       sobre el fondo de pantalla: 10.48:1. */
+    --sg-link: #6FD3E8;
+    --sg-panel-soft: #1C2830;
+    --sg-row-alt: #1C2830;
+    --sg-row-hover: #24333D;
+    --sg-line-soft: #24323B;
+
+    /* Niveles de habilidad. Contraste texto/fondo: principiante 9.29:1,
+       autónomo 8.49:1, experto 8.92:1, instructor 7.90:1, sin nivel 8.27:1. */
+    --sg-level-principiante-fg: #FFD066;
+    --sg-level-principiante-bg: #3A2D06;
+    --sg-level-principiante-border: #F0B24A;
+    --sg-level-autonomo-fg: #6FD3E8;
+    --sg-level-autonomo-bg: #0E2C36;
+    --sg-level-autonomo-border: #2A8CA3;
+    --sg-level-experto-fg: #7EE0A6;
+    --sg-level-experto-bg: #12301F;
+    --sg-level-experto-border: #2F7F52;
+    --sg-level-instructor-fg: #FF9A92;
+    --sg-level-instructor-bg: #3B1512;
+    --sg-level-instructor-border: #9B4B45;
+    --sg-level-sinnivel-fg: #B6C5CE;
+    --sg-level-sinnivel-bg: #1E2A33;
+    --sg-level-sinnivel-border: #3A4A55;
+
+    /* Estación descubierta: texto ámbar sobre marrón oscuro (10.46:1). */
+    --sg-gap-fg: #FFD066;
+    --sg-gap-bg: #2E2506;
+    --sg-gap-border: #B98500;
+
+    /* Sólidos de acción y avisos, siempre con texto blanco. */
+    --sg-action-ok-bg: #2F7F52; /* blanco encima: 4.91:1 */
+    --sg-toast-ok-bg: #176E3B; --sg-toast-ok-border: #4CC97C;
+    --sg-toast-bad-bg: #A82B25; --sg-toast-bad-border: #F0736B;
   }
 }
 * { box-sizing: border-box; }
@@ -82,6 +161,22 @@ h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.2rem; }
 .sg-btn--accent { background: var(--sg-thread); color: #16222E; }
 .sg-btn--ghost { background: transparent; color: var(--sg-teal); border-color: var(--sg-teal); }
 
+/* Acción con apariencia de botón sobre un enlace. Mantiene el tamaño compacto
+   de los accesos del tablero y usa los mismos tokens en ambos temas. */
+.sg-cta { display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  padding: 8px 16px; border: 1px solid var(--sg-primary); border-radius: 6px;
+  background: var(--sg-primary); color: var(--sg-on-solid); cursor: pointer;
+  font: 600 .875rem var(--sg-font-body); text-decoration: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+.sg-cta:hover { background: var(--sg-primary-dark); border-color: var(--sg-primary-dark); }
+.sg-cta--ghost { background: var(--sg-card); color: var(--sg-teal); border-color: var(--sg-line); box-shadow: none; }
+.sg-cta--ghost:hover { background: var(--sg-row-hover); border-color: var(--sg-teal); }
+.sg-cta--danger { background: var(--sg-card); color: var(--sg-bad-fg);
+  border-color: var(--sg-level-instructor-border); box-shadow: none; }
+.sg-cta--danger:hover { background: var(--sg-bad-bg); }
+.sg-cta--ok { background: var(--sg-action-ok-bg); border-color: var(--sg-action-ok-bg); }
+.sg-cta--ok:hover { background: var(--sg-action-ok-bg); border-color: var(--sg-action-ok-bg); }
+
 /* Captura rápida de piezas (Módulo 2) */
 .sg-capture { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
 .sg-capture .sg-btn { min-height: 96px; flex-direction: column; font-size: 1.3rem; }
@@ -93,6 +188,34 @@ h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.2rem; }
 .sg-badge--warn { background: var(--sg-warn-bg); color: var(--sg-warn-fg); }
 .sg-badge--bad { background: var(--sg-bad-bg); color: var(--sg-bad-fg); }
 .sg-badge--neutral { background: var(--sg-line); color: var(--sg-ink); }
+
+/* Niveles de habilidad: base y variantes. Cada texto va sobre el fondo de su
+   propio nivel y conserva >= 4.5:1 en tema claro y oscuro. */
+.sg-level { display: inline-block; padding: .15rem .7rem; border: 1px solid transparent;
+  border-radius: 999px; font: 600 .95rem var(--sg-font-head); }
+.sg-level--principiante { background: var(--sg-level-principiante-bg); color: var(--sg-level-principiante-fg);
+  border-color: var(--sg-level-principiante-border); }
+.sg-level--autonomo { background: var(--sg-level-autonomo-bg); color: var(--sg-level-autonomo-fg);
+  border-color: var(--sg-level-autonomo-border); }
+.sg-level--experto { background: var(--sg-level-experto-bg); color: var(--sg-level-experto-fg);
+  border-color: var(--sg-level-experto-border); }
+.sg-level--instructor { background: var(--sg-level-instructor-bg); color: var(--sg-level-instructor-fg);
+  border-color: var(--sg-level-instructor-border); }
+.sg-level--sinnivel { background: var(--sg-level-sinnivel-bg); color: var(--sg-level-sinnivel-fg);
+  border-color: var(--sg-level-sinnivel-border); }
+
+/* Estación «Descubierta»: texto de alerta sobre el fondo de la celda. */
+.sg-gap { color: var(--sg-gap-fg); }
+
+/* Enlace de texto y títulos teal que antes usaban un hex fijo. */
+.sg-link { color: var(--sg-link); text-decoration: underline; text-underline-offset: .15em; }
+.sg-link:focus-visible { outline: 3px solid var(--sg-thread); outline-offset: 2px; border-radius: 2px; }
+.sg-heading-teal { color: var(--sg-teal); }
+.sg-panel-soft { background: var(--sg-panel-soft); }
+
+/* Etiqueta compacta para nombres y agrupaciones dentro de tarjetas. */
+.sg-chip { display: inline-block; padding: .05rem .55rem; border: 1px solid var(--sg-line);
+  border-radius: 999px; font-size: .82rem; }
 
 /* Cifras alineadas en tablas y enlaces con objetivo táctil de 44 px */
 .sg-num { font-variant-numeric: tabular-nums; }

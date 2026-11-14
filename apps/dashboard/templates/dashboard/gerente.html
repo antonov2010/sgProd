@@ -46,7 +46,7 @@
             ({{ bono.periodo.etiqueta }}).
           </caption>
           <thead>
-            <tr style="border-bottom: 1px solid var(--sg-border, #e2e8f0); text-align: left;">
+            <tr style="border-bottom: 1px solid var(--sg-line); text-align: left;">
               <th scope="col" style="padding: 0.45rem 0.4rem;">No. Emp.</th>
               <th scope="col" style="padding: 0.45rem 0.4rem;">Operador</th>
               <th scope="col" style="padding: 0.45rem 0.4rem; text-align: right;">Aceptadas</th>
@@ -57,7 +57,7 @@
           </thead>
           <tbody>
             {% for op in pagina_elegibles %}
-            <tr data-elegible style="border-bottom: 1px solid var(--sg-border, #f1f5f9);">
+            <tr data-elegible style="border-bottom: 1px solid var(--sg-line-soft);">
               <td style="padding: 0.45rem 0.4rem;">{{ op.numero_empleado }}</td>
               <td style="padding: 0.45rem 0.4rem; font-weight: 600;">{{ op.nombre }}</td>
               <td class="sg-num" style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.aceptadas }}</td>
