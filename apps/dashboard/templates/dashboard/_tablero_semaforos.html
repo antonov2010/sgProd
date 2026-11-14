@@ -23,11 +23,22 @@
   .tg-badge.is-ok { color: var(--tg-ok-fg); } .tg-badge.is-warn { color: var(--tg-warn-fg); }
   .tg-badge.is-bad { color: var(--tg-bad-fg); } .tg-badge.is-none { color: var(--tg-muted); }
   .tg-sec { margin: 1.5rem 0 .25rem; font-size: 1.25rem; }
-  .tg-turnos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-  .tg-turno h3 { font-size: 1.05rem; }
-  .tg-turno-fila { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-top: .35rem; }
-  .tg-turno-fila small { color: var(--tg-muted); }
-  .tg-turno-fila b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+  /* Resumen plegable por turno: cerrado por defecto, sin JavaScript. */
+  .tg-plegable { margin: 1.25rem 0 1.5rem; border: 1px solid var(--tg-line); border-radius: 10px;
+                 background: var(--tg-card); }
+  .tg-plegable > summary { cursor: pointer; padding: .75rem 1rem; min-height: 48px;
+                           font: 700 1.1rem var(--sg-font-head); list-style-position: inside; }
+  .tg-plegable > summary:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+  .tg-plegable[open] > summary { border-bottom: 1px solid var(--tg-line); }
+  .tg-cuenta { float: right; color: var(--tg-muted); font-size: .9rem; font-weight: 600; }
+  .tg-turnos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem;
+               margin: 0; padding: .9rem 1rem 1rem; }
+  .tg-turno h3 { font-size: 1rem; }
+  .tg-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .45rem; }
+  .tg-chip { display: inline-flex; align-items: baseline; gap: .35rem; padding: .2rem .65rem;
+             border: 1px solid var(--tg-line); border-radius: 999px; font-size: .9rem; }
+  .tg-chip small { color: var(--tg-muted); }
+  .tg-chip b { font-variant-numeric: tabular-nums; }
   .tg-ayuda { margin: 0 0 .75rem; color: var(--tg-muted); font-size: .95rem; }
   .tg-lineas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
   .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column; }
@@ -94,23 +105,29 @@
   </section>
 
   {% if tablero.por_turno %}
-  <h2 class="tg-sec" id="titulo-por-turno">Por turno</h2>
-  <p class="tg-ayuda">FPY y tasa de defectos del día con captura, turno por turno.</p>
-  <section class="tg-turnos" aria-label="Indicadores de FPY y tasa de defectos por turno">
-    {% for nombre, k in tablero.por_turno.items %}
-    <article class="tg-card tg-turno">
-      <h3>{{ nombre }}</h3>
-      <p class="tg-turno-fila">
-        <small>FPY</small>
-        <b>{% if k.fpy is not None %}{{ k.fpy|floatformat:1 }} %{% else %}—{% endif %}</b>
-      </p>
-      <p class="tg-turno-fila">
-        <small>Tasa de defectos</small>
-        <b>{% if k.tasa_defectos is not None %}{{ k.tasa_defectos|floatformat:1 }} %{% else %}—{% endif %}</b>
-      </p>
-    </article>
-    {% endfor %}
-  </section>
+  <details class="tg-plegable">
+    <summary>
+      <span>Por turno</span>
+      <span class="tg-cuenta">{{ tablero.por_turno|length }} turno{{ tablero.por_turno|length|pluralize:"s" }}</span>
+    </summary>
+    <section class="tg-turnos" aria-label="Indicadores de FPY y tasa de defectos por turno">
+      {% for nombre, k in tablero.por_turno.items %}
+      <article class="tg-card tg-turno">
+        <h3>{{ nombre }}</h3>
+        <div class="tg-chips">
+          <span class="tg-chip">
+            <small>FPY</small>
+            <b>{% if k.fpy is not None %}{{ k.fpy|floatformat:1 }} %{% else %}—{% endif %}</b>
+          </span>
+          <span class="tg-chip">
+            <small>Defectos</small>
+            <b>{% if k.tasa_defectos is not None %}{{ k.tasa_defectos|floatformat:1 }} %{% else %}—{% endif %}</b>
+          </span>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+  </details>
   {% endif %}
 
   <h2 class="tg-sec">Líneas de producción</h2>

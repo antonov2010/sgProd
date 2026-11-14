@@ -20,6 +20,19 @@
   <span class="sg-badge sg-badge--warn">Jefe de Línea</span>
 </header>
 
+<section class="sg-kpis" aria-label="Indicadores del turno en curso">
+  {% for k in indicadores %}
+  <article class="sg-card sg-kpi" data-kpi="{{ k.clave }}">
+    <h2 class="sg-kpi__nombre">{{ k.nombre }}</h2>
+    <p class="sg-kpi__cifra">
+      <span class="sg-kpi__valor">{{ k.valor }}</span>
+      {% if k.unidad %}<span class="sg-kpi__unidad">{{ k.unidad }}</span>{% endif %}
+    </p>
+    <p class="sg-kpi__contexto">{{ k.contexto }}</p>
+  </article>
+  {% endfor %}
+</section>
+
 <section class="sg-role-grid" aria-label="Secciones del tablero de turno">
   <article class="sg-card sg-role-card">
     <p class="sg-eyebrow">Personal</p>

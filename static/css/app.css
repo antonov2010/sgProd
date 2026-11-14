@@ -107,6 +107,46 @@
 .sg-role-card h2 { margin: 0; font-size: 1.2rem; }
 .sg-role-card p { margin: 0; }
 .sg-role-card .sg-empty { margin-top: auto; }
+
+/* Indicadores del turno del jefe: número grande, unidad y contexto. */
+.sg-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.sg-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  border-top: 5px solid var(--sg-teal);
+}
+.sg-kpi__nombre {
+  margin: 0;
+  color: var(--sg-muted);
+  font: 700 .9rem var(--sg-font-head);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.sg-kpi__cifra {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  margin: 0;
+}
+.sg-kpi__valor {
+  font: 700 2.2rem/1.1 var(--sg-font-head);
+  font-variant-numeric: tabular-nums;
+}
+.sg-kpi__unidad {
+  color: var(--sg-muted);
+  font-weight: 600;
+}
+.sg-kpi__contexto {
+  margin: 0;
+  color: var(--sg-muted);
+  font-size: .9rem;
+}
 .sg-role-footer {
   display: flex;
   flex-wrap: wrap;

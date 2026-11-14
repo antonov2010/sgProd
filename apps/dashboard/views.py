@@ -2,6 +2,7 @@ from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
 
+from apps.calidad import services as calidad_services
 from apps.personal.models import Empleado
 
 from .accesos import rol_requerido
@@ -9,6 +10,7 @@ from .bonos import calcular_elegibles_bono
 from .config_umbrales import umbrales_actuales
 from .datos_ejemplo import personal_ejemplo, registros_ejemplo
 from .datos_reales import personal_real, registros_reales
+from .jefe_kpis import construir_indicadores_jefe
 from .tablero import construir_tablero
 
 
@@ -19,7 +21,22 @@ def pantalla_operador(request):
 
 @rol_requerido('jefe')
 def pantalla_jefe(request):
-    return render(request, 'dashboard/jefe.html')
+    # El turno se resuelve con el mismo reloj que la captura: de madrugada, el
+    # turno 3 sigue perteneciendo a la guardia que inició la noche anterior.
+    hora = calidad_services.hora_actual()
+    turno = calidad_services.turno_de_la_hora(hora)
+    fecha = calidad_services.fecha_de_la_guardia(turno)
+    linea = calidad_services.linea_del_jefe(request.empleado)
+    return render(
+        request,
+        'dashboard/jefe.html',
+        {
+            'linea': linea,
+            'turno': turno,
+            'hora': hora,
+            'indicadores': construir_indicadores_jefe(linea, turno, hora, fecha),
+        },
+    )
 
 
 @rol_requerido('gerente')
