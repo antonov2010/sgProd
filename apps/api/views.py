@@ -20,6 +20,7 @@ from apps.calidad.models import (
 from apps.dashboard.models import AlertaCapacitacion, BonoIncentivo, MetaEstacion
 from apps.personal import services
 from apps.personal.models import Empleado, Estacion, Linea, Rol, SkillMatrix
+from apps.personal.permisos import LineaNoPermitida, linea_autorizada
 
 from .serializers import (
     ActualizarNivelEntradaSerializer,
@@ -186,12 +187,14 @@ class MatrizNivelView(APIView):
             "Envía un nivel del catálogo para crearlo o actualizarlo. "
             "``Sin nivel`` elimina la fila de la matriz.\n\n"
             "**Requiere autenticación.** Con sesión de Django, DRF exige el "
-            "token CSRF (Swagger UI lo envía solo)."
+            "token CSRF (Swagger UI lo envía solo). El Jefe de Línea solo "
+            "puede editar empleados y estaciones de su propia línea."
         ),
         request=ActualizarNivelEntradaSerializer,
         responses={
             200: ActualizarNivelRespuestaSerializer,
             400: ActualizarNivelRespuestaSerializer,
+            403: ActualizarNivelRespuestaSerializer,
             404: ActualizarNivelRespuestaSerializer,
         },
     )
@@ -204,9 +207,30 @@ class MatrizNivelView(APIView):
             )
         datos = entrada.validated_data
 
+        empleado = Empleado.objects.filter(pk=datos["empleado_id"]).first()
+        if empleado is None:
+            return Response(
+                {"success": False, "error": "Empleado no encontrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        estacion = Estacion.objects.filter(pk=datos["estacion_id"]).first()
+        if estacion is None:
+            return Response(
+                {"success": False, "error": "Estación no encontrada"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            linea = linea_autorizada(request.user, empleado, estacion)
+        except LineaNoPermitida as exc:
+            return Response(
+                {"success": False, "error": str(exc)},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
             nivel = services.actualizar_nivel(
-                datos["empleado_id"], datos["estacion_id"], datos["nivel"]
+                empleado.pk, estacion.pk, datos["nivel"], linea=linea
             )
         except services.NivelInvalido as exc:
             return Response(

@@ -1,15 +1,18 @@
 """Carga los datos maestros del escenario de demo (US-04).
 
-El comando no crea asignaciones, registros de producción ni cálculos de
-tablero: esas piezas se conectan en historias posteriores. Aquí solo se
-preparan los catálogos que necesitan todas las pantallas para dejar de estar
-vacías cuando el equipo conecte la lógica.
+Por defecto prepara los catálogos (líneas, estaciones, empleados, metas,
+defectos y matriz de habilidades), ubica al personal en su línea y garantiza un
+operador Principiante por línea (US-09). Con ``--us15`` agrega además 14 días de
+asignaciones y registros de calidad para probar a mano la lista de elegibles a
+bono por cero defectos (US-15).
 """
 
 import random
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from apps.calidad.models import (
     Asignacion,
@@ -21,6 +24,7 @@ from apps.core.seed import cargar_dataset, ruta_dataset_por_defecto
 from apps.dashboard.models import (
     AlertaCapacitacion,
     BonoIncentivo,
+    ConfiguracionBono,
     MetaEstacion,
 )
 from apps.personal.models import (
@@ -44,7 +48,27 @@ NIVELES_COBERTURA = (
     NivelHabilidad.EXPERTO,
     NivelHabilidad.AUTONOMO,
     NivelHabilidad.AUTONOMO,
+    # El ``sample`` reparte estos niveles entre los operadores de cada estación,
+    # pero no garantiza que a cada estación le toque un Principiante. US-09 se
+    # garantiza después de asignar líneas, de forma explícita y determinista:
+    # al menos un Principiante por línea en una estación de esa misma línea.
+    NivelHabilidad.PRINCIPIANTE,
 )
+
+# Turno 1 de la captura horaria (US-11): 06:00 a 13:59.
+HORAS_TURNO_1 = range(6, 14)
+
+# Días atrás donde se coloca el defecto de cada caso de prueba de US-15.
+DIAS_DEFECTO_ANTIGUO = 10
+DIAS_DEFECTO_RECIENTE = 1
+
+# Variación de calidad para que el tablero no quede todo en verde (US-13):
+# el último día, estas líneas bajan su FPY con rechazadas repartidas solo entre
+# operadores que no son los tres casos de US-15.
+FPY_ULTIMO_DIA = {"Línea 4": 75.0, "Línea 6": 83.0}
+
+# Límite del modelo para ``RegistroCalidadHorario.piezas_rechazadas``.
+MAX_RECHAZADAS_POR_REGISTRO = 9999
 
 
 class Command(BaseCommand):
@@ -84,6 +108,14 @@ class Command(BaseCommand):
                 "(no solo los de demo). Solo para desarrollo local."
             ),
         )
+        parser.add_argument(
+            "--us15",
+            action="store_true",
+            help=(
+                "Agrega 14 días de asignaciones y calidad para probar la lista "
+                "de elegibles a bono por cero defectos (US-15). Requiere --reset."
+            ),
+        )
 
     def handle(self, *args, **options):
         try:
@@ -112,6 +144,11 @@ class Command(BaseCommand):
             )
         if not pin.isdigit() or len(pin) != 6:
             raise CommandError("El PIN debe tener exactamente 6 dígitos.")
+        if options["us15"] and not options["reset"]:
+            raise CommandError(
+                "--us15 requiere --reset: el escenario de US-15 necesita una "
+                "base limpia para que los casos sean reproducibles."
+            )
 
         self.dataset = dataset
         self.empleados_total = empleados_total
@@ -133,6 +170,16 @@ class Command(BaseCommand):
             )
             self._metas(estaciones)
             habilidades = self._habilidades(empleados, estaciones)
+            # Ubicar al personal en su línea no es exclusivo de US-15: también
+            # lo necesita la garantía de Principiante por línea (US-09).
+            self._asignar_lineas(lineas, jefes)
+            self._garantizar_principiante_por_linea(lineas, habilidades)
+            casos_us15 = None
+            calidad_us15 = []
+            if options["us15"]:
+                casos_us15, calidad_us15 = self._datos_us15(
+                    lineas, estaciones, defectos
+                )
 
         self._resumen(
             lineas=lineas,
@@ -142,6 +189,8 @@ class Command(BaseCommand):
             jefes=jefes,
             defectos=defectos,
             habilidades=habilidades,
+            casos_us15=casos_us15,
+            calidad_us15=calidad_us15,
         )
 
     # ------------------------------------------------------------------
@@ -151,6 +200,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING("Borrando datos de demo…"))
         AlertaCapacitacion.objects.all().delete()
         BonoIncentivo.objects.all().delete()
+        ConfiguracionBono.objects.all().delete()
         DetalleDefecto.objects.all().delete()
         RegistroCalidadHorario.objects.all().delete()
         Asignacion.objects.all().delete()
@@ -211,9 +261,11 @@ class Command(BaseCommand):
                     "nombre": persona_demo.nombre,
                     "rol": roles[tipo],
                     "activo": True,
-                    "pin": self.pin,
                 },
             )
+            # El PIN se guarda solo como hash, tanto al crear como al actualizar.
+            empleado.set_pin(self.pin)
+            empleado.save(update_fields=["pin_hash"])
             return empleado
 
         gerente = guardar(gerente_demo, "gerente")
@@ -272,6 +324,293 @@ class Command(BaseCommand):
         )
         return habilidades
 
+    # ------------------------------------------------------------------
+    # Datos de producción para la prueba manual de US-15
+    # ------------------------------------------------------------------
+    def _asignar_lineas(self, lineas, jefes):
+        """Deja cada línea con su jefe y cada operador en una línea.
+
+        El seed maestro no asigna líneas porque US-05 las administra a mano.
+        Para la demo hace falta que el Gerente vea producción real, que un Jefe
+        pueda entrar a la matriz y a la captura, y que la matriz de habilidades
+        se pueda leer por ``Empleado.linea``.
+        """
+        lineas_ordenadas = sorted(lineas, key=lambda linea: linea.nombre)
+        jefes_ordenados = sorted(jefes, key=lambda jefe: jefe.numero_empleado)
+        for linea, jefe in zip(lineas_ordenadas, jefes_ordenados, strict=False):
+            linea.jefe_linea = jefe
+            jefe.linea = linea
+
+        operadores = list(
+            Empleado.objects.filter(rol__tipo_rol="operador").order_by("numero_empleado")
+        )
+        for indice, operador in enumerate(operadores):
+            operador.linea = lineas_ordenadas[indice % len(lineas_ordenadas)]
+
+        Empleado.objects.bulk_update(jefes_ordenados + operadores, ["linea"])
+        Linea.objects.bulk_update(lineas_ordenadas, ["jefe_linea"])
+
+    def _garantizar_principiante_por_linea(self, lineas, habilidades):
+        """Deja al menos un Principiante por línea en una estación de su línea.
+
+        La matriz se llena con ``random.sample`` sobre todos los operadores, así
+        que una línea puede quedar sin Principiante. US-09 necesita mostrar la
+        alerta siempre: se asigna de forma explícita y determinista al primer
+        operador de la línea (por número) en su primera estación (por orden).
+        """
+        for linea in sorted(lineas, key=lambda item: item.nombre):
+            operador = (
+                Empleado.objects.filter(
+                    linea=linea, activo=True, rol__tipo_rol="operador"
+                )
+                .order_by("numero_empleado")
+                .first()
+            )
+            estacion = Estacion.objects.filter(linea=linea).order_by("orden").first()
+            if operador is None or estacion is None:
+                continue
+            SkillMatrix.objects.update_or_create(
+                empleado=operador,
+                estacion=estacion,
+                defaults={"nivel": NivelHabilidad.PRINCIPIANTE},
+            )
+            habilidades[(operador.id, estacion.id)] = NivelHabilidad.PRINCIPIANTE
+
+    def _datos_us15(self, lineas, estaciones, defectos):
+        """Crea 14 días de asignaciones y calidad con casos controlados.
+
+        Cada línea tiene tres operadores identificables:
+        - el primero nunca tiene piezas rechazadas;
+        - el segundo tiene un defecto hace 10 días (fuera de una ventana de 7);
+        - el tercero tiene un defecto ayer (dentro de cualquier ventana).
+        Así se puede comprobar la lista y el cambio de periodo sin tocar código.
+        """
+        if not defectos:
+            raise CommandError("El dataset no tiene defectos para el escenario US-15.")
+
+        defecto = defectos[0]
+        dias = max(self.dataset.dias_default, DIAS_DEFECTO_ANTIGUO + 1)
+        hoy = timezone.localdate()
+        fechas = [hoy - timedelta(days=offset) for offset in range(dias - 1, -1, -1)]
+        fecha_antigua = hoy - timedelta(days=DIAS_DEFECTO_ANTIGUO)
+        fecha_reciente = hoy - timedelta(days=DIAS_DEFECTO_RECIENTE)
+
+        ConfiguracionBono.objects.create(
+            tipo_periodo="dias", dias_evaluacion=dias, activo=True
+        )
+
+        metas = {
+            meta.estacion_id: meta.piezas_por_hora_meta
+            for meta in MetaEstacion.objects.all()
+        }
+        niveles = {
+            (habilidad.empleado_id, habilidad.estacion_id): habilidad.nivel
+            for habilidad in SkillMatrix.objects.filter(estacion__in=estaciones)
+        }
+        estaciones_por_linea = {}
+        for estacion in estaciones:
+            estaciones_por_linea.setdefault(estacion.linea_id, []).append(estacion)
+
+        asignaciones = []
+        casos = []
+        casos_por_linea = {}
+        for linea in sorted(lineas, key=lambda item: item.nombre):
+            operadores = list(
+                Empleado.objects.filter(
+                    linea=linea, rol__tipo_rol="operador", activo=True
+                ).order_by("numero_empleado")
+            )
+            estaciones_linea = estaciones_por_linea.get(linea.id, [])
+            if not operadores or not estaciones_linea:
+                continue
+
+            caso_limpio = operadores[0]
+            caso_antiguo = operadores[1] if len(operadores) > 1 else None
+            caso_reciente = operadores[2] if len(operadores) > 2 else None
+            casos.append(
+                {
+                    "linea": linea.nombre,
+                    "limpio": caso_limpio,
+                    "antiguo": caso_antiguo,
+                    "reciente": caso_reciente,
+                }
+            )
+            casos_por_linea[linea.id] = {
+                "limpio": caso_limpio.id,
+                "antiguo": caso_antiguo.id if caso_antiguo else None,
+                "reciente": caso_reciente.id if caso_reciente else None,
+            }
+
+            for indice, estacion in enumerate(estaciones_linea):
+                operador = operadores[indice % len(operadores)]
+                for fecha in fechas:
+                    asignaciones.append(
+                        Asignacion(
+                            empleado=operador,
+                            estacion=estacion,
+                            fecha=fecha,
+                            turno=1,
+                            alerta_supervision=niveles.get(
+                                (operador.id, estacion.id)
+                            )
+                            in (None, NivelHabilidad.PRINCIPIANTE),
+                        )
+                    )
+
+        Asignacion.objects.bulk_create(asignaciones, batch_size=500)
+
+        registros = []
+        for asignacion in asignaciones:
+            estacion = asignacion.estacion
+            meta = metas.get(estacion.id, 100)
+            caso = casos_por_linea.get(estacion.linea_id, {})
+            for hora in HORAS_TURNO_1:
+                aceptadas = max(
+                    0,
+                    meta
+                    + ((estacion.orden * 7 + hora * 3 + asignacion.fecha.toordinal()) % 7)
+                    - 3,
+                )
+                rechazadas = 0
+                if (
+                    asignacion.empleado_id == caso.get("antiguo")
+                    and asignacion.fecha == fecha_antigua
+                    and hora == 9
+                ):
+                    rechazadas = 2
+                elif (
+                    asignacion.empleado_id == caso.get("reciente")
+                    and asignacion.fecha == fecha_reciente
+                    and hora == 10
+                ):
+                    rechazadas = 1
+
+                registros.append(
+                    RegistroCalidadHorario(
+                        asignacion=asignacion,
+                        hora=hora,
+                        piezas_aceptadas=aceptadas,
+                        piezas_rechazadas=rechazadas,
+                        piezas_retrabajo=2 if (hora + estacion.orden) % 4 == 0 else 0,
+                    )
+                )
+
+        calidad = self._variar_calidad_ultimo_dia(
+            registros, lineas, casos_por_linea, hoy
+        )
+
+        RegistroCalidadHorario.objects.bulk_create(registros, batch_size=500)
+        DetalleDefecto.objects.bulk_create(
+            [
+                DetalleDefecto(
+                    registro=registro,
+                    defecto=defecto,
+                    cantidad=registro.piezas_rechazadas,
+                )
+                for registro in registros
+                if registro.piezas_rechazadas > 0
+            ],
+            batch_size=500,
+        )
+        return casos, calidad
+
+    @staticmethod
+    def _rechazadas_para_fpy(aceptadas, retrabajo, objetivo):
+        """Menor ``r`` entero que deja ``round(100*a/(a+r+t), 1) == objetivo``.
+
+        El FPY decrece de forma monótona al agregar rechazadas. Se arranca justo
+        por debajo del primer denominador que puede redondear al objetivo y se
+        avanza hasta acertar; así se garantiza que ``r`` sea el mínimo.
+        """
+        if aceptadas <= 0:
+            raise CommandError(
+                "No se puede ajustar el FPY de una línea sin piezas aceptadas."
+            )
+
+        denominador = 100 * aceptadas / (objetivo + 0.05)
+        rechazadas = max(0, int(denominador) - aceptadas - retrabajo - 1)
+        while True:
+            valor = round(
+                100 * aceptadas / (aceptadas + rechazadas + retrabajo), 1
+            )
+            if valor == objetivo:
+                return rechazadas
+            if valor < objetivo:
+                raise CommandError(
+                    f"No hay rechazadas enteras que dejen el FPY en {objetivo} % "
+                    f"(aceptadas={aceptadas}, retrabajo={retrabajo})."
+                )
+            rechazadas += 1
+
+    def _variar_calidad_ultimo_dia(self, registros, lineas, casos_por_linea, hoy):
+        """Baja el FPY de dos líneas repartiendo rechazadas en el último día.
+
+        Las rechazadas se calculan con las sumas del día y se reparten de forma
+        pareja solo entre registros de hoy que no pertenecen a los tres
+        operadores de US-15: el caso limpio sigue elegible y los casos de
+        defecto conservan intacta su historia.
+        """
+        lineas_por_nombre = {linea.nombre: linea for linea in lineas}
+        calidad = []
+        for nombre, objetivo in FPY_ULTIMO_DIA.items():
+            linea = lineas_por_nombre.get(nombre)
+            if linea is None:
+                continue
+
+            registros_dia = [
+                registro
+                for registro in registros
+                if registro.asignacion.estacion.linea_id == linea.id
+                and registro.asignacion.fecha == hoy
+            ]
+            if not registros_dia:
+                continue
+
+            aceptadas = sum(
+                registro.piezas_aceptadas for registro in registros_dia
+            )
+            retrabajo = sum(
+                registro.piezas_retrabajo for registro in registros_dia
+            )
+            rechazadas = self._rechazadas_para_fpy(
+                aceptadas, retrabajo, objetivo
+            )
+
+            excluidos = set(casos_por_linea.get(linea.id, {}).values()) - {None}
+            elegibles = [
+                registro
+                for registro in registros_dia
+                if registro.asignacion.empleado_id not in excluidos
+            ]
+            if not elegibles:
+                raise CommandError(
+                    f"{nombre} no tiene operadores fuera de los casos US-15 "
+                    "para repartir las rechazadas de la variación de calidad."
+                )
+
+            base, sobrantes = divmod(rechazadas, len(elegibles))
+            for indice, registro in enumerate(elegibles):
+                extra = base + (1 if indice < sobrantes else 0)
+                if (
+                    registro.piezas_rechazadas + extra
+                    > MAX_RECHAZADAS_POR_REGISTRO
+                ):
+                    raise CommandError(
+                        f"El registro {registro.asignacion_id}/{registro.hora} "
+                        f"de {nombre} superaría las "
+                        f"{MAX_RECHAZADAS_POR_REGISTRO} rechazadas."
+                    )
+                registro.piezas_rechazadas += extra
+
+            total = aceptadas + rechazadas + retrabajo
+            calidad.append(
+                {
+                    "linea": nombre,
+                    "fpy": round(100 * aceptadas / total, 1),
+                }
+            )
+        return calidad
+
     def _resumen(
         self,
         *,
@@ -282,6 +621,8 @@ class Command(BaseCommand):
         jefes,
         defectos,
         habilidades,
+        casos_us15=None,
+        calidad_us15=None,
     ):
         self.stdout.write("")
         self.stdout.write(
@@ -311,6 +652,57 @@ class Command(BaseCommand):
                 f"  Operador:      {operador.numero_empleado} · {operador.nombre}"
             )
         self.stdout.write("")
-        self.stdout.write(
-            "  Nota: asignaciones y producción se agregan en historias posteriores."
-        )
+        if casos_us15:
+            configuracion = ConfiguracionBono.objects.filter(activo=True).first()
+            ventana = (
+                configuracion.dias_evaluacion
+                if configuracion
+                else self.dataset.dias_default
+            )
+            self.stdout.write(
+                self.style.MIGRATE_HEADING(
+                    f"Casos de prueba US-15 (ventana de {ventana} días)"
+                )
+            )
+            self.stdout.write(
+                f"  Asignaciones:  {Asignacion.objects.count()}"
+            )
+            self.stdout.write(
+                f"  Registros:     {RegistroCalidadHorario.objects.count()}"
+            )
+            if calidad_us15:
+                variacion = " · ".join(
+                    f"{item['linea']} {item['fpy']:.1f} %"
+                    for item in calidad_us15
+                )
+                self.stdout.write(f"  Calidad:       {variacion}")
+            self.stdout.write(
+                f"  Configuración: {ConfiguracionBono.objects.filter(activo=True).count()} activa"
+            )
+
+            def persona(empleado):
+                if empleado is None:
+                    return "—"
+                return f"{empleado.numero_empleado} · {empleado.nombre}"
+
+            for caso in casos_us15:
+                self.stdout.write("")
+                self.stdout.write(f"  {caso['linea']}")
+                self.stdout.write(f"    Elegible:         {persona(caso['limpio'])}")
+                self.stdout.write(
+                    f"    Defecto antiguo:  {persona(caso['antiguo'])} "
+                    f"(hace {DIAS_DEFECTO_ANTIGUO} días)"
+                )
+                self.stdout.write(
+                    f"    Defecto reciente: {persona(caso['reciente'])} "
+                    f"(hace {DIAS_DEFECTO_RECIENTE} día)"
+                )
+            self.stdout.write("")
+            self.stdout.write(
+                "  Prueba manual: docs/04_guia_pruebas_us15.md"
+            )
+        else:
+            self.stdout.write(
+                "  Nota: asignaciones y producción se agregan con --us15 "
+                "para la prueba de bono cero defectos."
+            )

@@ -8,6 +8,7 @@ Este README sirve para tener tu ambiente local listo en unos 20 minutos. Si algo
 - [Alcance del proyecto](docs/01_alcance_del_proyecto.md).
 - [Guía para probar US-05](docs/02_guia_pruebas_us05.md): pruebas automáticas y verificación manual de empleados, estaciones y la relación Jefe de Línea ↔ Línea.
 - [Guía de la API REST y Swagger](docs/03_guia_api_swagger.md): autenticación, endpoints y cómo documentar uno nuevo.
+- [Guía para probar US-15](docs/04_guia_pruebas_us15.md): escenario sembrado, credenciales y verificación manual de elegibles a bono por cero defectos.
 
 ---
 
@@ -159,9 +160,19 @@ Carga **5 líneas, 40 estaciones, 200 empleados**, metas, catálogo de defectos 
 matriz de habilidades desde [`data/seed/demo_sgprod.json`](data/seed/demo_sgprod.json).
 El PIN de demo es `123456` y las credenciales se imprimen al terminar.
 
-El comando **no** crea asignaciones ni registros de producción: esa lógica se
-conecta en historias posteriores. Para una carga rápida o para simular menos
-personal:
+El comando **no** crea asignaciones ni registros de producción por defecto. Para
+la prueba manual de US-15, carga el escenario completo:
+
+```powershell
+python manage.py seed_demo --reset --us15
+```
+
+Agrega **14 días** de asignaciones y registros horarios, asigna líneas y jefes, y
+deja activa una configuración de bono de 14 días. Al terminar imprime los casos
+de prueba. El paso a paso para Rocío está en la
+[guía para probar US-15](docs/04_guia_pruebas_us15.md).
+
+Para una carga rápida o para simular menos personal:
 
 ```powershell
 python manage.py seed_demo --empleados 80 --reset
@@ -169,11 +180,12 @@ python manage.py seed_demo --archivo data/seed/demo_sgprod.json --reset
 ```
 
 > `--reset` borra **todos los datos de dominio** de esa base (empleados, líneas,
-> estaciones, habilidades, metas, defectos, asignaciones y registros), no solo
-> los de demo. Úsalo solo en tu base local.
+> estaciones, habilidades, metas, defectos, asignaciones, registros y
+> configuración de bono), no solo los de demo. Úsalo solo en tu base local.
 >
 > Sin `--reset`, el comando actualiza y crea registros, pero **no elimina** los
 > que ya existían. Para un volumen exacto, combina `--reset --empleados N`.
+> `--us15` exige `--reset` para que los casos sean reproducibles.
 
 ### 5.2 Revisar que la base coincide con la rama
 
@@ -290,8 +302,33 @@ Reglas:
   conserva a su operador.
 - Los registros guardados aparecen en **Registros del turno**, al pie de la
   pantalla, y en el Admin (*Calidad → Registros de calidad horario*).
+- Si una estación tiene piezas **Rechazadas**, el motivo de defecto es
+  obligatorio (RF-2.2). El catálogo se precarga con
+  `python manage.py seed_defectos` (o con `seed_demo`) y se administra en
+  *Calidad → Catálogo de defectos*.
 
-El motivo de defecto obligatorio cuando hay Rechazadas se agrega en US-12.
+### 5.5 Tablero gerencial y bono por cero defectos (US-13 a US-15)
+
+El Gerente de Producción entra con su número y PIN y abre
+`/dashboard/gerente/`. Ahí ve el tablero At-a-Glance, los KPIs del periodo y la
+tarjeta **Bonos del periodo**.
+
+- El tablero usa los registros reales de calidad. Si todavía no hay capturas,
+  muestra datos de ejemplo con un aviso visible.
+- La lista de elegibles incluye a los operadores **activos** que tuvieron
+  producción en el periodo y **cero piezas rechazadas** (RF-3.3).
+- El periodo se configura sin tocar código en *Admin → Dashboard →
+  Configuración de bono cero defectos*: últimos N días (ventana móvil) o un
+  rango fijo de fechas.
+- Al hacer clic en un operador se abre
+  `/dashboard/gerente/bono/<empleado_id>/`, con los registros horarios que
+  sustentan su elegibilidad.
+- **Fuera de alcance:** el sistema identifica elegibles; el pago del bono se
+  hace fuera de SG-Prod.
+- Escenario de prueba manual:
+  `python manage.py seed_demo --reset --us15`, con la guía
+  [docs/04_guia_pruebas_us15.md](docs/04_guia_pruebas_us15.md).
+- Pruebas de la regla: `pytest apps/dashboard/test_bonos.py`.
 
 ---
 
@@ -361,6 +398,7 @@ sgProd/
 ├── data/seed/              # dataset JSON de demo (US-04)
 ├── postgresql/             # docker-compose.yml + .env.example del contenedor
 ├── SG-Prod_diseno/         # paquete de diseño original y guía de estilo
+├── .github/workflows/      # puerta de calidad (CI)
 └── docs/                   # guías del ambiente, alcance y pruebas por historia
 ```
 
@@ -386,4 +424,27 @@ python manage.py runserver
 - Se usa [`drf-spectacular`](https://drf-spectacular.readthedocs.io/), no
   `django-rest-swagger`: ese último está archivado y no corre en Django 5.2
   (explicación en la [§0 de la guía](docs/03_guia_api_swagger.md#0-antes-de-empezar-por-qué-no-django-rest-swagger)).
+
+---
+
+## 10. Puerta de calidad
+
+Antes de abrir un PR hacia `dev`, ejecuta en local:
+
+```bash
+python manage.py check
+python manage.py migrate
+python manage.py check_db
+python manage.py makemigrations --check --dry-run
+ruff check .
+pytest
+```
+
+Las cinco revisiones deben terminar sin errores. `check_db` solo pasa si tu base
+local está migrada; si reporta migraciones pendientes, corre `migrate` antes.
+
+El workflow [`.github/workflows/calidad.yml`](.github/workflows/calidad.yml)
+repite esas revisiones en GitHub con una base PostgreSQL limpia. Está alineado
+al estado actual del proyecto (US-15): no exige funciones de US-16 a US-18 ni
+una cobertura distinta a la que ya tienen las pruebas entregadas.
 

@@ -41,7 +41,7 @@
                                         <small class="text-muted d-block">Sin personal disponible con nivel suficiente</small>
                                     {% else %}
                                         <span class="badge bg-success">Sugerido:</span>
-                                        <strong>{{ item.empleado.nombre }} {{ item.empleado.apellido }}</strong>
+                                        <strong>{{ item.empleado.nombre }}</strong>
                                         <small class="text-muted">({{ item.empleado.numero_empleado }})</small>
                                     {% endif %}
                                 </td>
@@ -52,7 +52,7 @@
                                         {% for op in todos_los_operadores %}
                                             <option value="{{ op.id }}" 
                                                 {% if item.empleado and item.empleado.id == op.id %}selected{% endif %}>
-                                                {{ op.nombre }} {{ op.apellido }} ({{ op.numero_empleado }})
+                                                {{ op.nombre }} ({{ op.numero_empleado }})
                                             </option>
                                         {% endfor %}
                                     </select>

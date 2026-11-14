@@ -934,7 +934,20 @@ python manage.py seed_demo --reset
 
 Carga 5 líneas, 40 estaciones, 200 empleados, metas, defectos y matriz de habilidades desde [`data/seed/demo_sgprod.json`](<../data/seed/demo_sgprod.json>). El comando imprime las credenciales; el PIN es `123456`.
 
-> **Cuidado:** `--reset` borra **todos los datos de dominio** de la base (no solo los de demo). Úsalo únicamente en tu base local. Sin `--reset`, el comando no elimina los registros que ya existían; para un volumen exacto usa `--reset --empleados N`.
+Para la prueba manual de US-15 (elegibles a bono por cero defectos) usa el
+escenario completo:
+
+```bash
+python manage.py seed_demo --reset --us15
+```
+
+Agrega 14 días de asignaciones y registros horarios (560 asignaciones y 4 480
+registros), asigna cada línea a su Jefe y cada operador a una línea, y deja
+activa una configuración de bono de 14 días. Al terminar imprime los tres casos
+por línea: elegible, defecto antiguo y defecto reciente. El paso a paso para
+Rocío está en la [guía de prueba manual de US-15](04_guia_pruebas_us15.md).
+
+> **Cuidado:** `--reset` borra **todos los datos de dominio** de la base (no solo los de demo). Úsalo únicamente en tu base local. Sin `--reset`, el comando no elimina los registros que ya existían; para un volumen exacto usa `--reset --empleados N`. `--us15` exige `--reset` para que los casos sean reproducibles.
 
 ---
 

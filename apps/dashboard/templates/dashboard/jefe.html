@@ -3,7 +3,7 @@
 {% block title %}Tablero de turno · SG-Prod{% endblock %}
 
 {% block nav_links %}
-  <span style="color: white; font-weight: 500; margin-right: 15px;">
+  <span class="sg-nav-user">
     {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
   </span>
   <a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
@@ -20,6 +20,19 @@
   <span class="sg-badge sg-badge--warn">Jefe de Línea</span>
 </header>
 
+<section class="sg-kpis" aria-label="Indicadores del turno en curso">
+  {% for k in indicadores %}
+  <article class="sg-card sg-kpi" data-kpi="{{ k.clave }}">
+    <h2 class="sg-kpi__nombre">{{ k.nombre }}</h2>
+    <p class="sg-kpi__cifra">
+      <span class="sg-kpi__valor">{{ k.valor }}</span>
+      {% if k.unidad %}<span class="sg-kpi__unidad">{{ k.unidad }}</span>{% endif %}
+    </p>
+    <p class="sg-kpi__contexto">{{ k.contexto }}</p>
+  </article>
+  {% endfor %}
+</section>
+
 <section class="sg-role-grid" aria-label="Secciones del tablero de turno">
   <article class="sg-card sg-role-card">
     <p class="sg-eyebrow">Personal</p>
@@ -27,7 +40,7 @@
    <p class="sg-muted">Quién está asignado y qué estaciones necesitan apoyo.</p>
 
     <!-- Botón estilizado dentro del cuadro con la línea punteada del diseño -->
-    <a href="{% url 'personal:matriz_competencias' %}" class="sg-empty" style="display: block; text-decoration: none; background-color: #0d5c75; color: #ffffff; font-weight: 600; text-align: center; border-style: solid; border-color: #0d5c75;">
+    <a href="{% url 'personal:matriz_competencias' %}" class="sg-empty sg-empty--action">
       Consultar Matriz de Competencias →
     </a>
   </article>
@@ -36,20 +49,9 @@
     <p class="sg-eyebrow">Calidad</p>
     <h2>Captura de la hora</h2>
     <p class="sg-muted">Aceptadas, rechazadas y retrabajo por estación.</p>
-    <a href="{% url 'calidad:captura' %}" class="sg-empty" style="display: block; text-decoration: none; background-color: #0d5c75; color: #ffffff; font-weight: 600; text-align: center; border-style: solid; border-color: #0d5c75;">
+    <a href="{% url 'calidad:captura' %}" class="sg-empty sg-empty--action">
       Capturar la hora →
     </a>
   </article>
-
-  <article class="sg-card sg-role-card">
-    <p class="sg-eyebrow">Seguimiento</p>
-    <h2>Alertas del turno</h2>
-    <p class="sg-muted">Niveles de habilidad y estaciones que requieren atención.</p>
-    <div class="sg-empty">Pendiente de conectar las alertas de supervisión.</div>
-  </article>
 </section>
-
-<footer class="sg-role-footer">
-  <span class="sg-muted sg-small">Vista base por rol. La operación se integra en historias posteriores.</span>
-</footer>
 {% endblock %}

@@ -10,6 +10,17 @@ from . import services
 from .models import Asignacion, CatalogoDefecto, DetalleDefecto, RegistroCalidadHorario
 
 
+def crear_empleado(**datos):
+    """Crea un empleado con el PIN ya hasheado (nunca en texto plano)."""
+    pin = datos.pop("pin", None)
+    empleado = Empleado.objects.create(**datos)
+    if pin is not None:
+        empleado.set_pin(pin)
+        empleado.save(update_fields=["pin_hash"])
+    return empleado
+
+
+
 class CatalogoDefectoRF22Tests(TestCase):
     """Pruebas unitarias y de integración para RF-2.2 (Catálogo estandarizado de defectos)."""
 
@@ -17,14 +28,14 @@ class CatalogoDefectoRF22Tests(TestCase):
         self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
         self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
 
-        self.jefe = Empleado.objects.create(
+        self.jefe = crear_empleado(
             numero_empleado="SG-9001",
             nombre="Jefe Prueba",
             pin="123456",
             rol=self.rol_jefe,
             activo=True,
         )
-        self.operador = Empleado.objects.create(
+        self.operador = crear_empleado(
             numero_empleado="SG-9002",
             nombre="Operador Prueba",
             pin="123456",
@@ -160,3 +171,71 @@ class CatalogoDefectoRF22Tests(TestCase):
             defecto_id=None,
         )
         self.assertEqual(DetalleDefecto.objects.count(), 0)
+
+
+class CuerpoMalformadoTests(TestCase):
+    """B-07: un cuerpo malformado responde 400, nunca 500."""
+
+    def setUp(self):
+        self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+        self.jefe = crear_empleado(
+            numero_empleado="SG-9101",
+            nombre="Jefe Malformado",
+            pin="123456",
+            rol=self.rol_jefe,
+            activo=True,
+        )
+        self.operador = crear_empleado(
+            numero_empleado="SG-9102",
+            nombre="Operador Malformado",
+            pin="123456",
+            rol=self.rol_operador,
+            activo=True,
+        )
+        self.linea = Linea.objects.create(nombre="Línea Malformada", jefe_linea=self.jefe)
+        self.estacion = Estacion.objects.create(
+            linea=self.linea, nombre="Estación Malformada", orden=1
+        )
+        self.asignacion = Asignacion.objects.create(
+            empleado=self.operador,
+            estacion=self.estacion,
+            turno=1,
+        )
+        self.client = Client()
+        session = self.client.session
+        session["empleado_id"] = self.jefe.id
+        session.save()
+        self.url = reverse("calidad:guardar_captura")
+
+    def _post(self, cuerpo):
+        return self.client.post(
+            self.url, data=json.dumps(cuerpo), content_type="application/json"
+        )
+
+    def test_b07_cuerpo_lista_no_devuelve_500(self):
+        respuesta = self._post([])
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(respuesta.json()["ok"])
+
+    def test_b07_cuerpo_null_no_devuelve_500(self):
+        respuesta = self._post(None)
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(respuesta.json()["ok"])
+
+    def test_b07_asignacion_id_no_numerica_no_devuelve_500(self):
+        respuesta = self._post(
+            {
+                "asignacion_id": "abc",
+                "hora": 8,
+                "aceptadas": 10,
+                "rechazadas": 0,
+                "retrabajo": 0,
+            }
+        )
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn("asignacion_id", respuesta.json()["error"])
+        self.assertEqual(RegistroCalidadHorario.objects.count(), 0)

@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from .models import ConfiguracionBono, UmbralSemaforo
+from .models import ConfiguracionBono, MetaEstacion, UmbralSemaforo
+
+
+@admin.register(MetaEstacion)
+class MetaEstacionAdmin(admin.ModelAdmin):
+    """Meta de piezas por hora editable desde el Admin (US-14, RF-3.2)."""
+
+    list_display = ("estacion", "estacion__linea", "piezas_por_hora_meta")
+    list_editable = ("piezas_por_hora_meta",)
+    list_select_related = ("estacion", "estacion__linea")
 
 
 @admin.register(UmbralSemaforo)
