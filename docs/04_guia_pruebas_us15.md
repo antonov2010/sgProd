@@ -97,6 +97,11 @@ La idea es simple:
    - aparece **Verónica Reyes (`SG-0005`)**;
    - **no** aparecen Ricardo Gómez (`SG-0012`) ni Teresa Morales (`SG-0017`).
 
+> La lista se presenta **paginada de 10 en 10** y ordenada por piezas aceptadas,
+> así que Verónica puede quedar en una página posterior. Usa los controles
+> **Anterior / Siguiente** («Página X de Y») para recorrerla; el total de
+> elegibles se muestra arriba de la tabla.
+
 ✅ Criterio: *“Dado un operador sin defectos en el periodo evaluado, cuando el
 Gerente consulta elegibles a bono, entonces el operador aparece en la lista.”*
 

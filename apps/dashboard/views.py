@@ -1,3 +1,4 @@
+from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
 
@@ -34,6 +35,11 @@ def pantalla_gerente(request):
         personal = personal_real()
     tablero = construir_tablero(registros, personal, umbrales_actuales())
     bono = calcular_elegibles_bono()
+    # RNF-4: la lista de elegibles se pagina de 10 en 10 para no volcar todo
+    # el padrón de golpe en pantallas de gerencia.
+    pagina_elegibles = Paginator(bono['elegibles'], 10).get_page(
+        request.GET.get('pagina')
+    )
     return render(
         request,
         'dashboard/gerente.html',
@@ -41,6 +47,7 @@ def pantalla_gerente(request):
             'tablero': tablero,
             'tablero_es_ejemplo': es_ejemplo,
             'bono': bono,
+            'pagina_elegibles': pagina_elegibles,
         },
     )
 

@@ -22,6 +22,11 @@
   .tg-badge.is-ok { color: var(--tg-ok); } .tg-badge.is-warn { color: var(--tg-warn); }
   .tg-badge.is-bad { color: var(--tg-bad); } .tg-badge.is-none { color: var(--tg-muted); }
   .tg-sec { margin: 1.5rem 0 .25rem; font-size: 1.25rem; }
+  .tg-turnos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .tg-turno h3 { font-size: 1.05rem; }
+  .tg-turno-fila { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-top: .35rem; }
+  .tg-turno-fila small { color: var(--tg-muted); }
+  .tg-turno-fila b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
   .tg-ayuda { margin: 0 0 .75rem; color: var(--tg-muted); font-size: .95rem; }
   .tg-lineas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
   .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column; }
@@ -84,6 +89,26 @@
     </article>
     {% endfor %}
   </section>
+
+  {% if tablero.por_turno %}
+  <h2 class="tg-sec" id="titulo-por-turno">Por turno</h2>
+  <p class="tg-ayuda">FPY y tasa de defectos del día con captura, turno por turno.</p>
+  <section class="tg-turnos" aria-label="Indicadores de FPY y tasa de defectos por turno">
+    {% for nombre, k in tablero.por_turno.items %}
+    <article class="tg-card tg-turno">
+      <h3>{{ nombre }}</h3>
+      <p class="tg-turno-fila">
+        <small>FPY</small>
+        <b>{% if k.fpy is not None %}{{ k.fpy|floatformat:1 }} %{% else %}—{% endif %}</b>
+      </p>
+      <p class="tg-turno-fila">
+        <small>Tasa de defectos</small>
+        <b>{% if k.tasa_defectos is not None %}{{ k.tasa_defectos|floatformat:1 }} %{% else %}—{% endif %}</b>
+      </p>
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
 
   <h2 class="tg-sec">Líneas de producción</h2>
   <p class="tg-ayuda">El color de cada línea es el de su peor estación. Toca «Ver tendencia» para ver su gráfica hora por hora.</p>
