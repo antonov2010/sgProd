@@ -68,3 +68,127 @@ def test_la_tendencia_va_tras_las_lineas_y_antes_de_piezas(client, captura_geren
     assert 'id="g-l1"' in html
     assert 'aria-controls="g-l1"' in html
     assert 'aria-expanded="true"' in html
+
+
+def _registrar_operador(linea, estacion, rol, numero, nombre, aceptadas=40):
+    """Crea un operador con producción limpia para el tablero y los bonos."""
+    operador = Empleado.objects.create(
+        numero_empleado=numero,
+        nombre=nombre,
+        rol=rol,
+        linea=linea,
+    )
+    asignacion = Asignacion.objects.create(
+        empleado=operador,
+        estacion=estacion,
+        turno=1,
+    )
+    RegistroCalidadHorario.objects.create(
+        asignacion=asignacion,
+        hora=1,
+        piezas_aceptadas=aceptadas,
+        piezas_rechazadas=0,
+    )
+    return operador
+
+
+@pytest.fixture
+def cinco_lineas(entrar):
+    """Cinco líneas con captura real: las cinco tarjetas del carrusel."""
+    entrar("gerente")
+    rol, _ = Rol.objects.get_or_create(
+        tipo_rol="operador", defaults={"nombre": "Operador"}
+    )
+    for numero in range(1, 6):
+        linea = Linea.objects.create(nombre=f"Línea {numero}")
+        estacion = Estacion.objects.create(linea=linea, nombre="Ensamble", orden=1)
+        _registrar_operador(
+            linea, estacion, rol, f"OP-L{numero}", f"Operador L{numero}"
+        )
+
+
+@pytest.fixture
+def doce_elegibles(entrar):
+    """Doce elegibles: la tabla se reparte en 10 + 2 y la URL lleva el hash."""
+    entrar("gerente")
+    rol, _ = Rol.objects.get_or_create(
+        tipo_rol="operador", defaults={"nombre": "Operador"}
+    )
+    linea = Linea.objects.create(nombre="Línea bonos")
+    estacion = Estacion.objects.create(linea=linea, nombre="Ensamble", orden=1)
+    for numero in range(1, 13):
+        _registrar_operador(
+            linea,
+            estacion,
+            rol,
+            f"OP-B{numero:02d}",
+            f"Elegible {numero:02d}",
+        )
+
+
+def test_secciones_en_orden_y_con_separadores(client, captura_gerente):
+    html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
+
+    secciones = [
+        "indicadores-planta",
+        "lineas-produccion",
+        "tendencia-hora",
+        "produccion-defectos",
+        "reconocimiento",
+    ]
+    posiciones = [html.index(f'id="{seccion}"') for seccion in secciones]
+    assert posiciones == sorted(posiciones)
+    # Indicadores → Líneas → Tendencia → Producción → Reconocimiento.
+    assert len(posiciones) == 5
+    assert html.count('<hr class="sg-dash-sep">') >= 4
+
+    for seccion in secciones:
+        assert re.search(
+            rf'<section[^>]*id="{seccion}"[^>]*aria-labelledby="titulo-', html
+        )
+    assert html.count("<h2") >= 5
+
+
+def test_el_carrusel_expone_controles_y_las_cinco_tarjetas(client, cinco_lineas):
+    html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
+
+    assert 'role="region"' in html
+    assert 'aria-roledescription="carrusel"' in html
+    assert 'aria-label="Línea anterior"' in html
+    assert 'aria-label="Línea siguiente"' in html
+    assert html.count('data-linea="') == 5
+
+    pista = re.search(
+        r'data-carrusel-pista>(.*?)</div>\s*<div class="tg-carrusel__controles"',
+        html,
+        re.S,
+    )
+    assert pista is not None
+    assert pista.group(1).count('data-linea="') == 5
+    # Sin JavaScript las tarjetas quedan visibles (nada de hidden ni vacío).
+    for tarjeta in re.findall(r'<article[^>]*data-linea="[^"]+"[^>]*>', html):
+        assert "hidden" not in tarjeta
+
+
+def test_paginacion_conserva_el_hash_y_el_bloque_de_la_tabla(client, doce_elegibles):
+    html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
+
+    assert 'id="bonos-tabla"' in html
+    assert 'tabindex="-1"' in html
+    assert 'aria-live="polite"' in html
+    assert 'href="?pagina=2#reconocimiento"' in html
+    assert html.count("data-elegible") == 10
+    assert "Total de elegibles: 12" in html
+    assert "Página 1 de 2" in html
+    assert "Mostrando 1–10 de 12" in html
+
+    # El fetch pide solo el bloque, que conserva su id y su paginación.
+    fragmento = client.get(
+        "/dashboard/gerente/?pagina=2&fragmento=bonos"
+    ).content.decode()
+    assert "<html" not in fragmento.lower()
+    assert 'id="bonos-tabla"' in fragmento
+    assert fragmento.count("data-elegible") == 2
+    assert 'href="?pagina=1#reconocimiento"' in fragmento
+    assert "Página 2 de 2" in fragmento
+    assert "Mostrando 11–12 de 12" in fragmento

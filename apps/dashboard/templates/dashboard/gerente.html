@@ -16,15 +16,16 @@
   </div>
   <span class="sg-badge sg-badge--ok">Gerente de Producción</span>
 </header>
+
 {% include "dashboard/_tablero_semaforos.html" %}
 
-<section class="sg-role-grid" aria-label="Secciones del tablero gerencial">
-  <article class="sg-card sg-role-card" aria-labelledby="titulo-bono-cero-defectos">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap;">
-      <div>
-        <p class="sg-eyebrow">Reconocimiento</p>
-        <h2 id="titulo-bono-cero-defectos">Bonos del periodo</h2>
-      </div>
+<hr class="sg-dash-sep">
+
+<section class="sg-dash-section" id="reconocimiento" aria-labelledby="titulo-reconocimiento">
+  <h2 class="sg-dash-title" id="titulo-reconocimiento">Reconocimiento</h2>
+  <article class="sg-card sg-bonos" aria-labelledby="titulo-bono-cero-defectos">
+    <div class="sg-bonos__cab">
+      <h3 id="titulo-bono-cero-defectos">Bonos del periodo</h3>
       {% if user.is_staff %}
       <a href="/admin/dashboard/configuracionbono/" class="sg-btn sg-btn--ghost sg-small">
         Configurar periodo
@@ -38,68 +39,72 @@
     </p>
     <p class="sg-muted sg-small">Total de elegibles: {{ bono.elegibles|length }}.</p>
 
-    {% if bono.elegibles %}
-      <div style="overflow-x: auto; margin-top: 0.75rem;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-          <caption class="visually-hidden">
-            Elegibles a bono del periodo: {{ bono.periodo.inicio }} al {{ bono.periodo.fin }}
-            ({{ bono.periodo.etiqueta }}).
-          </caption>
-          <thead>
-            <tr style="border-bottom: 1px solid var(--sg-line); text-align: left;">
-              <th scope="col" style="padding: 0.45rem 0.4rem;">No. Emp.</th>
-              <th scope="col" style="padding: 0.45rem 0.4rem;">Operador</th>
-              <th scope="col" style="padding: 0.45rem 0.4rem; text-align: right;">Aceptadas</th>
-              <th scope="col" style="padding: 0.45rem 0.4rem; text-align: right;">Defectos</th>
-              <th scope="col" style="padding: 0.45rem 0.4rem; text-align: right;">FPY</th>
-              <th scope="col" style="padding: 0.45rem 0.4rem; text-align: right;">Evidencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for op in pagina_elegibles %}
-            <tr data-elegible style="border-bottom: 1px solid var(--sg-line-soft);">
-              <td style="padding: 0.45rem 0.4rem;">{{ op.numero_empleado }}</td>
-              <td style="padding: 0.45rem 0.4rem; font-weight: 600;">{{ op.nombre }}</td>
-              <td class="sg-num" style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.aceptadas }}</td>
-              <td class="sg-num" style="padding: 0.45rem 0.4rem; text-align: right;">
-                {% if op.rechazadas %}
-                  <span class="sg-badge sg-badge--neutral">{{ op.rechazadas }} ({{ op.tasa_defectos|default_if_none:0|floatformat:1 }} %)</span>
-                {% else %}
-                  <span class="sg-badge sg-badge--ok">{{ op.rechazadas }} ({{ op.tasa_defectos|default_if_none:0|floatformat:1 }} %)</span>
-                {% endif %}
-              </td>
-              <td class="sg-num" style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.fpy }} %</td>
-              <td style="padding: 0.45rem 0.4rem; text-align: right;">
-                <a href="{% url 'dashboard:detalle_elegible_bono' op.empleado_id %}" class="sg-small sg-link-touch">
-                  Ver detalle ({{ op.total_registros }})
-                </a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <nav aria-label="Paginación de elegibles"
-           style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.85rem;">
-        {% if pagina_elegibles.has_previous %}
-          <a class="sg-btn sg-btn--ghost sg-small" href="?pagina={{ pagina_elegibles.previous_page_number }}">Anterior</a>
-        {% else %}
-          <span class="sg-btn sg-btn--ghost sg-small" aria-disabled="true" style="opacity: 0.5;">Anterior</span>
-        {% endif %}
-        <span class="sg-muted sg-small">
-          Mostrando {{ rango_pagina.desde }}–{{ rango_pagina.hasta }} de {{ rango_pagina.total }}
-          · Página {{ pagina_elegibles.number }} de {{ pagina_elegibles.paginator.num_pages }}
-        </span>
-        {% if pagina_elegibles.has_next %}
-          <a class="sg-btn sg-btn--ghost sg-small" href="?pagina={{ pagina_elegibles.next_page_number }}">Siguiente</a>
-        {% else %}
-          <span class="sg-btn sg-btn--ghost sg-small" aria-disabled="true" style="opacity: 0.5;">Siguiente</span>
-        {% endif %}
-      </nav>
-    {% else %}
-      <div class="sg-empty">No hay operadores elegibles a bono por cero defectos en el periodo evaluado.</div>
-    {% endif %}
+    {% include "dashboard/_bonos_tabla.html" %}
   </article>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Paginación de bonos sin recargar: solo se sustituye #bonos-tabla.
+  (function () {
+    var bloque = document.getElementById('bonos-tabla');
+    if (!bloque || !window.fetch || !window.DOMParser || !window.history.pushState) return;
+
+    function anunciar(nuevo) {
+      var resumen = nuevo.querySelector('[data-bonos-resumen]');
+      if (!resumen) return;
+      var mensaje = resumen.textContent.trim();
+      // Se vuelve a escribir para que el lector de pantalla anuncie el cambio.
+      resumen.textContent = '';
+      window.setTimeout(function () { resumen.textContent = mensaje; }, 80);
+    }
+
+    function cargar(url, empujar) {
+      var destino = new URL(url, window.location.href);
+      destino.hash = '';
+      destino.searchParams.set('fragmento', 'bonos');
+
+      window.fetch(destino.toString(), {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch' }
+      }).then(function (respuesta) {
+        if (!respuesta.ok) throw new Error('No se pudo cargar la página');
+        return respuesta.text();
+      }).then(function (texto) {
+        var documento = new DOMParser().parseFromString(texto, 'text/html');
+        var nuevo = documento.getElementById('bonos-tabla');
+        var actual = document.getElementById('bonos-tabla');
+        if (!nuevo || !actual) throw new Error('Falta el bloque de bonos');
+        var importado = document.importNode(nuevo, true);
+        actual.replaceWith(importado);
+        importado.focus({ preventScroll: true });
+        anunciar(importado);
+        if (empujar) {
+          var pagina = importado.getAttribute('data-pagina') || '1';
+          window.history.pushState({ pagina: pagina }, '', '?pagina=' + encodeURIComponent(pagina));
+        }
+      }).catch(function () {
+        // Si fetch falla se sigue el enlace normal, que lleva a #reconocimiento.
+        window.location.href = url;
+      });
+    }
+
+    document.addEventListener('click', function (evento) {
+      if (evento.defaultPrevented || evento.button !== 0) return;
+      if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+      var objetivo = evento.target;
+      if (!objetivo || !objetivo.closest) return;
+      var enlace = objetivo.closest('[data-paginador] a[data-pagina]');
+      if (!enlace) return;
+      evento.preventDefault();
+      cargar(enlace.getAttribute('href'), true);
+    });
+
+    window.addEventListener('popstate', function () {
+      var pagina = new URLSearchParams(window.location.search).get('pagina') || '1';
+      cargar('?pagina=' + encodeURIComponent(pagina) + '#reconocimiento', false);
+    });
+  })();
+</script>
 {% endblock %}

@@ -4,8 +4,7 @@
   .tg { --tg-ok: var(--sg-ok); --tg-warn: var(--sg-warn); --tg-bad: var(--sg-bad);
         --tg-ok-fg: var(--sg-ok-fg); --tg-warn-fg: var(--sg-warn-fg); --tg-bad-fg: var(--sg-bad-fg);
         --tg-line: var(--sg-line); --tg-card: var(--sg-card);
-        --tg-muted: var(--sg-muted); --tg-focus: var(--sg-thread);
-        margin-bottom: 1.5rem; }
+        --tg-muted: var(--sg-muted); --tg-focus: var(--sg-thread); }
   .tg * { box-sizing: border-box; }
   .tg h3 { margin: 0; }
   .tg-aviso { margin: 0 0 1rem; color: var(--tg-muted); font-size: .95rem; }
@@ -22,9 +21,8 @@
               border: 1.5px solid currentColor; white-space: nowrap; }
   .tg-badge.is-ok { color: var(--tg-ok-fg); } .tg-badge.is-warn { color: var(--tg-warn-fg); }
   .tg-badge.is-bad { color: var(--tg-bad-fg); } .tg-badge.is-none { color: var(--tg-muted); }
-  .tg-sec { margin: 1.5rem 0 .25rem; font-size: 1.25rem; }
   /* Resumen plegable por turno: cerrado por defecto, sin JavaScript. */
-  .tg-plegable { margin: 1.25rem 0 1.5rem; border: 1px solid var(--tg-line); border-radius: 10px;
+  .tg-plegable { margin: 1.25rem 0 0; border: 1px solid var(--tg-line); border-radius: 10px;
                  background: var(--tg-card); }
   .tg-plegable > summary { cursor: pointer; padding: .75rem 1rem; min-height: 48px;
                            font: 700 1.1rem var(--sg-font-head); list-style-position: inside; }
@@ -68,7 +66,7 @@
   .tg-grafica text { fill: currentColor; font-size: 12px; }
   .tg-leyenda { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .5rem; color: var(--tg-muted); font-size: .9rem; }
   .tg-leyenda span { display: inline-flex; align-items: center; gap: .4rem; }
-  .tg-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .tg-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 1rem; }
   .tg-dos h3 { margin-bottom: .15rem; }
   .tg-fila { padding: .6rem 0; border-top: 1px solid var(--tg-line); }
   .tg-fila-cab { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .3rem; }
@@ -90,173 +88,197 @@
   <p class="tg-aviso">Datos reales del último día con captura horaria.</p>
   {% endif %}
 
-  <h2 class="visually-hidden" id="titulo-indicadores-planta">Indicadores de planta</h2>
-  <section class="tg-kpis" aria-labelledby="titulo-indicadores-planta">
-    {% for k in tablero.kpis %}
-    <article class="tg-card tg-kpi is-{{ k.estado }}">
-      <div class="tg-cab">
-        <h3>{{ k.nombre }}</h3>
-        <span class="tg-badge is-{{ k.estado }}">{{ k.etiqueta }}</span>
-      </div>
-      <span class="tg-valor">{{ k.valor }}</span>
-      <small>{{ k.objetivo }}</small>
-    </article>
-    {% endfor %}
-  </section>
-
-  {% if tablero.por_turno %}
-  <details class="tg-plegable">
-    <summary>
-      <span>Por turno</span>
-      <span class="tg-cuenta">{{ tablero.por_turno|length }} turno{{ tablero.por_turno|length|pluralize:"s" }}</span>
-    </summary>
-    <section class="tg-turnos" aria-label="Indicadores de FPY y tasa de defectos por turno">
-      {% for nombre, k in tablero.por_turno.items %}
-      <article class="tg-card tg-turno">
-        <h3>{{ nombre }}</h3>
-        <div class="tg-chips">
-          <span class="tg-chip">
-            <small>FPY</small>
-            <b>{% if k.fpy is not None %}{{ k.fpy|floatformat:1 }} %{% else %}—{% endif %}</b>
-          </span>
-          <span class="tg-chip">
-            <small>Defectos</small>
-            <b>{% if k.tasa_defectos is not None %}{{ k.tasa_defectos|floatformat:1 }} %{% else %}—{% endif %}</b>
-          </span>
+  <section class="sg-dash-section" id="indicadores-planta" aria-labelledby="titulo-indicadores-planta">
+    <h2 class="sg-dash-title" id="titulo-indicadores-planta">Indicadores de planta</h2>
+    <div class="tg-kpis">
+      {% for k in tablero.kpis %}
+      <article class="tg-card tg-kpi is-{{ k.estado }}">
+        <div class="tg-cab">
+          <h3>{{ k.nombre }}</h3>
+          <span class="tg-badge is-{{ k.estado }}">{{ k.etiqueta }}</span>
         </div>
+        <span class="tg-valor">{{ k.valor }}</span>
+        <small>{{ k.objetivo }}</small>
       </article>
       {% endfor %}
-    </section>
-  </details>
-  {% endif %}
+    </div>
 
-  <h2 class="tg-sec">Líneas de producción</h2>
-  <p class="tg-ayuda">El color de cada línea es el de su peor estación. Toca «Ver tendencia» para ver su gráfica hora por hora.</p>
-  <section class="tg-lineas" aria-label="Estado por línea y estación">
-    {% for l in tablero.lineas %}
-    <article class="tg-card tg-linea is-{{ l.estado }}{% if l.id == tablero.activa %} is-activa{% endif %}" data-linea="{{ l.id }}">
-      <div class="tg-cab">
-        <h3>{{ l.nombre }}</h3>
-        <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
-      </div>
-      <div class="tg-resumen">
-        <div><strong>{{ l.fpy }}</strong><br><small>FPY de la línea</small></div>
-        <svg class="tg-spark" viewBox="0 0 160 44" role="img"
-             aria-label="Tendencia de FPY hora por hora de {{ l.nombre }}: {{ l.grafica.resumen }}">
-          <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      {% if l.personal.jefe or l.personal.total %}
-      <div class="tg-personal">
-        {% if l.personal.jefe %}<div>Jefe de línea: <b>{{ l.personal.jefe }}</b></div>{% endif %}
-        <div>En línea: <b>{{ l.personal.total }}</b> operadores</div>
-        <div class="tg-nombres">
-          {% for n in l.personal.visibles %}<span>{{ n }}</span>{% endfor %}
-          {% if l.personal.mas %}<span class="mas">+{{ l.personal.mas }} más</span>{% endif %}
-        </div>
-      </div>
-      {% endif %}
-      <ul class="tg-estaciones">
-        {% for e in l.estaciones %}
-        <li>
-          <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
-          <span class="n">{{ e.nombre }}</span>
-          <span class="v">{{ e.fpy }}</span>
-          <span class="e">{{ e.etiqueta }}</span>
-        </li>
+    {% if tablero.por_turno %}
+    <details class="tg-plegable">
+      <summary>
+        <span>Por turno</span>
+        <span class="tg-cuenta">{{ tablero.por_turno|length }} turno{{ tablero.por_turno|length|pluralize:"s" }}</span>
+      </summary>
+      <div class="tg-turnos" role="group" aria-label="Indicadores de FPY y tasa de defectos por turno">
+        {% for nombre, k in tablero.por_turno.items %}
+        <article class="tg-card tg-turno">
+          <h3>{{ nombre }}</h3>
+          <div class="tg-chips">
+            <span class="tg-chip">
+              <small>FPY</small>
+              <b>{% if k.fpy is not None %}{{ k.fpy|floatformat:1 }} %{% else %}—{% endif %}</b>
+            </span>
+            <span class="tg-chip">
+              <small>Defectos</small>
+              <b>{% if k.tasa_defectos is not None %}{{ k.tasa_defectos|floatformat:1 }} %{% else %}—{% endif %}</b>
+            </span>
+          </div>
+        </article>
         {% endfor %}
-      </ul>
-      <button type="button" class="tg-ver" data-panel="g-{{ l.id }}" aria-controls="g-{{ l.id }}"
-              aria-expanded="{% if l.id == tablero.activa %}true{% else %}false{% endif %}">Ver tendencia</button>
+      </div>
+    </details>
+    {% endif %}
+  </section>
+
+  <hr class="sg-dash-sep">
+
+  <section class="sg-dash-section" id="lineas-produccion" aria-labelledby="titulo-lineas-produccion">
+    <h2 class="sg-dash-title" id="titulo-lineas-produccion">Líneas de producción</h2>
+    <p class="tg-ayuda">El color de cada línea es el de su peor estación. Toca «Ver tendencia» para ver su gráfica hora por hora.</p>
+    <div class="tg-carrusel" role="region" aria-roledescription="carrusel"
+         aria-label="Líneas de producción" data-carrusel>
+      <div class="tg-lineas tg-carrusel__pista" data-carrusel-pista>
+        {% for l in tablero.lineas %}
+        <article class="tg-card tg-linea is-{{ l.estado }}{% if l.id == tablero.activa %} is-activa{% endif %}" data-linea="{{ l.id }}">
+          <div class="tg-cab">
+            <h3>{{ l.nombre }}</h3>
+            <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
+          </div>
+          <div class="tg-resumen">
+            <div><strong>{{ l.fpy }}</strong><br><small>FPY de la línea</small></div>
+            <svg class="tg-spark" viewBox="0 0 160 44" role="img"
+                 aria-label="Tendencia de FPY hora por hora de {{ l.nombre }}: {{ l.grafica.resumen }}">
+              <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          {% if l.personal.jefe or l.personal.total %}
+          <div class="tg-personal">
+            {% if l.personal.jefe %}<div>Jefe de línea: <b>{{ l.personal.jefe }}</b></div>{% endif %}
+            <div>En línea: <b>{{ l.personal.total }}</b> operadores</div>
+            <div class="tg-nombres">
+              {% for n in l.personal.visibles %}<span>{{ n }}</span>{% endfor %}
+              {% if l.personal.mas %}<span class="mas">+{{ l.personal.mas }} más</span>{% endif %}
+            </div>
+          </div>
+          {% endif %}
+          <ul class="tg-estaciones">
+            {% for e in l.estaciones %}
+            <li>
+              <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
+              <span class="n">{{ e.nombre }}</span>
+              <span class="v">{{ e.fpy }}</span>
+              <span class="e">{{ e.etiqueta }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          <button type="button" class="tg-ver" data-panel="g-{{ l.id }}" aria-controls="g-{{ l.id }}"
+                  aria-expanded="{% if l.id == tablero.activa %}true{% else %}false{% endif %}">Ver tendencia</button>
+        </article>
+        {% endfor %}
+      </div>
+      <div class="tg-carrusel__controles">
+        <button type="button" class="tg-carrusel__btn" data-carrusel-prev
+                aria-label="Línea anterior">Anterior</button>
+        <button type="button" class="tg-carrusel__btn" data-carrusel-next
+                aria-label="Línea siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <hr class="sg-dash-sep">
+
+  <section class="sg-dash-section" id="tendencia-hora" aria-labelledby="titulo-tendencia-hora">
+    <h2 class="sg-dash-title" id="titulo-tendencia-hora">Tendencia hora por hora</h2>
+    {% for l in tablero.lineas %}
+    {% with t=l.grafica %}
+    <article class="tg-card tg-panel" id="g-{{ l.id }}" {% if l.id != tablero.activa %}hidden{% endif %}>
+      <h3>{{ l.nombre }} · FPY por hora</h3>
+      <figure class="tg-figura">
+        <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
+             aria-labelledby="titulo-grafica-{{ l.id }} desc-grafica-{{ l.id }}">
+          <title id="titulo-grafica-{{ l.id }}">FPY de {{ l.nombre }} por hora: {{ t.resumen }}</title>
+          <desc id="desc-grafica-{{ l.id }}">Resumen: {{ t.resumen }}. Umbrales: verde desde {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.</desc>
+          {% for g in t.guias %}
+          <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
+          <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+          {% endfor %}
+          <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          {% for p in t.puntos %}
+          <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
+          {% endfor %}
+          {% for h in t.horas %}
+          <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
+          {% endfor %}
+        </svg>
+        <figcaption class="visually-hidden">
+          FPY de {{ l.nombre }} por hora. {{ t.resumen }}. Umbrales: verde desde
+          {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.
+        </figcaption>
+      </figure>
+      <table class="visually-hidden">
+        <caption>FPY por hora de {{ l.nombre }}</caption>
+        <thead>
+          <tr><th scope="col">Hora</th><th scope="col">FPY</th></tr>
+        </thead>
+        <tbody>
+          {% for p in t.puntos %}
+          <tr><td>{{ p.hora }}</td><td class="sg-num">{{ p.valor }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="tg-leyenda">
+        <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
+        <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
+        <span><i class="tg-dot is-bad"></i> Rojo: menos de {{ t.amarillo }}</span>
+      </div>
     </article>
+    {% endwith %}
     {% endfor %}
   </section>
 
-  <h2 class="tg-sec">Tendencia hora por hora</h2>
-  {% for l in tablero.lineas %}
-  {% with t=l.grafica %}
-  <article class="tg-card tg-panel" id="g-{{ l.id }}" {% if l.id != tablero.activa %}hidden{% endif %}>
-    <h3>{{ l.nombre }} · FPY por hora</h3>
-    <figure class="tg-figura">
-      <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
-           aria-labelledby="titulo-grafica-{{ l.id }} desc-grafica-{{ l.id }}">
-        <title id="titulo-grafica-{{ l.id }}">FPY de {{ l.nombre }} por hora: {{ t.resumen }}</title>
-        <desc id="desc-grafica-{{ l.id }}">Resumen: {{ t.resumen }}. Umbrales: verde desde {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.</desc>
-        {% for g in t.guias %}
-        <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
-        <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+  <hr class="sg-dash-sep">
+
+  <section class="sg-dash-section" id="produccion-defectos" aria-labelledby="titulo-produccion-defectos">
+    <h2 class="sg-dash-title" id="titulo-produccion-defectos">Producción y defectos</h2>
+    <div class="tg-dos">
+      <article class="tg-card" aria-labelledby="titulo-piezas-meta">
+        <h3 id="titulo-piezas-meta">Piezas por hora vs meta</h3>
+        <p class="tg-ayuda">Promedio de piezas buenas por hora y por estación. La marca vertical es la meta.</p>
+        {% for l in tablero.lineas %}{% if l.piezas %}
+        <div class="tg-fila">
+          <div class="tg-fila-cab">
+            <span><b>{{ l.nombre }}</b><small>{{ l.piezas.valor }} de {{ l.piezas.meta }} piezas/hora</small></span>
+            <span><b>{{ l.piezas.cumplimiento }}</b> <span class="tg-badge is-{{ l.piezas.estado }}">{{ l.piezas.etiqueta }}</span></span>
+          </div>
+          <div class="tg-barra" role="img" aria-label="{{ l.nombre }}: {{ l.piezas.cumplimiento }} de la meta">
+            <i class="is-{{ l.piezas.estado }}" style="width: {{ l.piezas.ancho }}%"></i>
+            <span class="tg-marca" style="left: {{ l.piezas.marca }}%"></span>
+          </div>
+        </div>
+        {% endif %}{% endfor %}
+      </article>
+
+      <article class="tg-card" aria-labelledby="titulo-defectos-empleado">
+        <h3 id="titulo-defectos-empleado">Tasa de defectos por empleado</h3>
+        <p class="tg-ayuda">Los empleados con más piezas rechazadas, para dirigir la capacitación.</p>
+        {% for e in tablero.empleados %}
+        <div class="tg-fila">
+          <div class="tg-fila-cab">
+            <span><b>{{ e.nombre }}</b><small>{{ e.donde }} · {{ e.rechazadas }} rechazadas</small></span>
+            <span><b>{{ e.tasa }}</b> <span class="tg-badge is-{{ e.estado }}">{{ e.etiqueta }}</span></span>
+          </div>
+          <div class="tg-barra" role="img" aria-label="{{ e.nombre }}: {{ e.tasa }} de defectos">
+            <i class="is-{{ e.estado }}" style="width: {{ e.ancho }}%"></i>
+          </div>
+        </div>
+        {% empty %}
+        <p class="tg-nota">Sin datos por empleado todavía.</p>
         {% endfor %}
-        <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
-        <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
-        <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-        {% for p in t.puntos %}
-        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
-        {% endfor %}
-        {% for h in t.horas %}
-        <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
-        {% endfor %}
-      </svg>
-      <figcaption class="visually-hidden">
-        FPY de {{ l.nombre }} por hora. {{ t.resumen }}. Umbrales: verde desde
-        {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.
-      </figcaption>
-    </figure>
-    <table class="visually-hidden">
-      <caption>FPY por hora de {{ l.nombre }}</caption>
-      <thead>
-        <tr><th scope="col">Hora</th><th scope="col">FPY</th></tr>
-      </thead>
-      <tbody>
-        {% for p in t.puntos %}
-        <tr><td>{{ p.hora }}</td><td class="sg-num">{{ p.valor }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div class="tg-leyenda">
-      <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
-      <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
-      <span><i class="tg-dot is-bad"></i> Rojo: menos de {{ t.amarillo }}</span>
+      </article>
     </div>
-  </article>
-  {% endwith %}
-  {% endfor %}
-
-  <div class="tg-dos">
-    <article class="tg-card" aria-label="Piezas por hora contra la meta">
-      <h3>Piezas por hora vs meta</h3>
-      <p class="tg-ayuda">Promedio de piezas buenas por hora y por estación. La marca vertical es la meta.</p>
-      {% for l in tablero.lineas %}{% if l.piezas %}
-      <div class="tg-fila">
-        <div class="tg-fila-cab">
-          <span><b>{{ l.nombre }}</b><small>{{ l.piezas.valor }} de {{ l.piezas.meta }} piezas/hora</small></span>
-          <span><b>{{ l.piezas.cumplimiento }}</b> <span class="tg-badge is-{{ l.piezas.estado }}">{{ l.piezas.etiqueta }}</span></span>
-        </div>
-        <div class="tg-barra" role="img" aria-label="{{ l.nombre }}: {{ l.piezas.cumplimiento }} de la meta">
-          <i class="is-{{ l.piezas.estado }}" style="width: {{ l.piezas.ancho }}%"></i>
-          <span class="tg-marca" style="left: {{ l.piezas.marca }}%"></span>
-        </div>
-      </div>
-      {% endif %}{% endfor %}
-    </article>
-
-    <article class="tg-card" aria-label="Tasa de defectos por empleado">
-      <h3>Tasa de defectos por empleado</h3>
-      <p class="tg-ayuda">Los empleados con más piezas rechazadas, para dirigir la capacitación.</p>
-      {% for e in tablero.empleados %}
-      <div class="tg-fila">
-        <div class="tg-fila-cab">
-          <span><b>{{ e.nombre }}</b><small>{{ e.donde }} · {{ e.rechazadas }} rechazadas</small></span>
-          <span><b>{{ e.tasa }}</b> <span class="tg-badge is-{{ e.estado }}">{{ e.etiqueta }}</span></span>
-        </div>
-        <div class="tg-barra" role="img" aria-label="{{ e.nombre }}: {{ e.tasa }} de defectos">
-          <i class="is-{{ e.estado }}" style="width: {{ e.ancho }}%"></i>
-        </div>
-      </div>
-      {% empty %}
-      <p class="tg-nota">Sin datos por empleado todavía.</p>
-      {% endfor %}
-    </article>
-  </div>
+  </section>
 </div>
 
 <script>
@@ -277,5 +299,87 @@
         destino.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     });
+
+    // Carrusel de líneas: 3 tarjetas visibles, avance de una en una.
+    var carrusel = raiz.querySelector('[data-carrusel]');
+    if (!carrusel) return;
+    var pista = carrusel.querySelector('[data-carrusel-pista]');
+    if (!pista) return;
+    var fichas = pista.querySelectorAll('.tg-linea');
+    if (!fichas.length) return;
+    var anterior = carrusel.querySelector('[data-carrusel-prev]');
+    var siguiente = carrusel.querySelector('[data-carrusel-next]');
+    var VISIBLES = 3;
+    var INTERVALO = 30000;
+    var maximo = Math.max(0, fichas.length - VISIBLES);
+    var indice = 0;
+    var temporizador = null;
+    var reducido = window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+
+    for (var i = 0; i < fichas.length; i++) {
+      if (fichas[i].classList.contains('is-activa')) {
+        indice = Math.min(i, maximo);
+        break;
+      }
+    }
+
+    function paso() {
+      if (fichas.length < 2) return 0;
+      var estilo = window.getComputedStyle(pista);
+      var hueco = parseFloat(estilo.columnGap || estilo.gap) || 0;
+      return fichas[0].getBoundingClientRect().width + hueco;
+    }
+
+    function pintar() {
+      pista.style.transform = 'translateX(' + (-indice * paso()) + 'px)';
+      for (var j = 0; j < fichas.length; j++) {
+        var fuera = j < indice || j >= indice + VISIBLES;
+        fichas[j].setAttribute('aria-hidden', fuera ? 'true' : 'false');
+        if ('inert' in fichas[j]) fichas[j].inert = fuera;
+      }
+      if (anterior) anterior.disabled = (maximo === 0);
+      if (siguiente) siguiente.disabled = (maximo === 0);
+    }
+
+    function mover(delta) {
+      if (maximo === 0) return;
+      indice = (indice + delta + maximo + 1) % (maximo + 1);
+      pintar();
+    }
+
+    function detener() {
+      if (temporizador !== null) {
+        window.clearInterval(temporizador);
+        temporizador = null;
+      }
+    }
+
+    function arrancar() {
+      detener();
+      if (maximo === 0) return;
+      if (reducido && reducido.matches) return;
+      temporizador = window.setInterval(function () { mover(1); }, INTERVALO);
+    }
+
+    if (anterior) anterior.addEventListener('click', function () { mover(-1); });
+    if (siguiente) siguiente.addEventListener('click', function () { mover(1); });
+    carrusel.addEventListener('mouseenter', detener);
+    carrusel.addEventListener('mouseleave', arrancar);
+    carrusel.addEventListener('focusin', detener);
+    carrusel.addEventListener('focusout', function (evento) {
+      if (!carrusel.contains(evento.relatedTarget)) arrancar();
+    });
+    window.addEventListener('resize', pintar);
+    if (reducido && reducido.addEventListener) {
+      reducido.addEventListener('change', function () {
+        if (reducido.matches) detener(); else arrancar();
+      });
+    }
+
+    carrusel.classList.add('is-carrusel');
+    pintar();
+    arrancar();
   })();
 </script>

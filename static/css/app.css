@@ -181,3 +181,99 @@
   .sg-nav { align-items: flex-start; }
   .sg-nav__links { width: 100%; margin-left: 0; }
 }
+
+/* ---------- Tablero gerencial ---------- */
+/* Espaciado uniforme entre las secciones del tablero. */
+:root { --sg-space: 1.5rem; }
+
+.sg-dash-section { margin: 0; }
+.sg-dash-title { margin: 0 0 .35rem; font-size: 1.3rem; }
+/* Un solo trazo: sin bordes dobles ni separadores del navegador. */
+.sg-dash-sep {
+  height: 0;
+  margin: var(--sg-space) 0;
+  border: 0;
+  border-top: 1px solid var(--sg-line);
+}
+/* La barra superior queda fija al hacer scroll a la gráfica o a los bonos. */
+#reconocimiento,
+#bonos-tabla,
+.tg-panel { scroll-margin-top: 5rem; }
+
+/* Carrusel de líneas de producción.
+   Sin JavaScript la pista conserva la rejilla de .tg-lineas y se ven todas
+   las tarjetas. El script agrega .is-carrusel para pasar a 3 por vista. */
+.tg-carrusel { position: relative; }
+.tg-carrusel__pista {
+  transition: transform 500ms cubic-bezier(.22, .61, .36, 1);
+  will-change: transform;
+}
+.tg-carrusel.is-carrusel {
+  overflow: hidden;
+  padding: 4px;
+  margin: -4px;
+}
+.tg-carrusel.is-carrusel .tg-carrusel__pista { display: flex; gap: 1rem; }
+.tg-carrusel.is-carrusel .tg-linea {
+  flex: 0 0 calc((100% - 2rem) / 3);
+  min-width: 0;
+}
+.tg-carrusel__controles {
+  display: flex;
+  justify-content: center;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+.tg-carrusel:not(.is-carrusel) .tg-carrusel__controles { display: none; }
+.tg-carrusel__btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 2px solid var(--sg-teal);
+  border-radius: var(--sg-radius);
+  background: var(--sg-card);
+  color: var(--sg-teal);
+  font: 600 1rem var(--sg-font-head);
+  cursor: pointer;
+}
+.tg-carrusel__btn:hover { background: var(--sg-teal); color: var(--sg-on-solid); }
+.tg-carrusel__btn:focus-visible { outline: 3px solid var(--sg-thread); outline-offset: 2px; }
+.tg-carrusel__btn[disabled] { opacity: .45; cursor: default; }
+.tg-carrusel__btn[disabled]:hover { background: var(--sg-card); color: var(--sg-teal); }
+
+/* Tarjeta de reconocimiento y su tabla paginada. */
+.sg-bonos { scroll-margin-top: 5rem; }
+.sg-bonos__cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.sg-bonos__cab h3 { margin: 0; }
+.sg-bonos__scroll { margin-top: .75rem; }
+.sg-table--compact { font-size: .9rem; }
+.sg-table--compact th,
+.sg-table--compact td { padding: .45rem .4rem; }
+.sg-table--compact .sg-num { text-align: right; }
+.sg-bonos__paginador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .85rem;
+}
+.sg-bonos__estado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
+  margin: 0;
+}
+.sg-bonos__rango { color: var(--sg-muted); }
+/* El foco viaja al bloque tras paginar; el anillo marca dónde cambió. */
+.sg-bonos__bloque:focus {
+  outline: 3px solid var(--sg-thread);
+  outline-offset: 4px;
+  border-radius: 4px;
+}

@@ -64,17 +64,18 @@ def pantalla_gerente(request):
         'hasta': pagina_elegibles.end_index(),
         'total': pagina_elegibles.paginator.count,
     }
-    return render(
-        request,
-        'dashboard/gerente.html',
-        {
-            'tablero': tablero,
-            'tablero_es_ejemplo': es_ejemplo,
-            'bono': bono,
-            'pagina_elegibles': pagina_elegibles,
-            'rango_pagina': rango_pagina,
-        },
-    )
+    contexto = {
+        'tablero': tablero,
+        'tablero_es_ejemplo': es_ejemplo,
+        'bono': bono,
+        'pagina_elegibles': pagina_elegibles,
+        'rango_pagina': rango_pagina,
+    }
+    # La paginación de bonos se resuelve por fetch y solo reemplaza la tabla.
+    # Sin JavaScript se sigue sirviendo la pantalla completa con ?pagina=N.
+    if request.GET.get('fragmento') == 'bonos':
+        return render(request, 'dashboard/_bonos_tabla.html', contexto)
+    return render(request, 'dashboard/gerente.html', contexto)
 
 
 @rol_requerido('gerente')
