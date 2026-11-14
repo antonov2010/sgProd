@@ -183,6 +183,18 @@ def test_el_carrusel_expone_controles_y_las_cinco_tarjetas(client, cinco_lineas)
         assert "hidden" not in tarjeta
 
 
+def test_el_carrusel_base_no_tiene_clones_ni_ids_duplicados(client, cinco_lineas):
+    """Los clones del bucle infinito los agrega el JS; el HTML base no los trae."""
+    html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
+
+    assert not re.search(r"<article[^>]*data-clon", html)
+    assert html.count('data-linea="') == 5
+
+    ids = re.findall(r'\bid="([^"]+)"', html)
+    assert ids
+    assert len(ids) == len(set(ids))
+
+
 def test_paginacion_conserva_el_hash_y_el_bloque_de_la_tabla(client, doce_elegibles):
     html = client.get(reverse("dashboard:pantalla_gerente")).content.decode()
 

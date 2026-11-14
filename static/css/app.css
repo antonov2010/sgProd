@@ -207,6 +207,10 @@
   transition: transform 500ms cubic-bezier(.22, .61, .36, 1);
   will-change: transform;
 }
+/* Sin movimiento: el carrusel salta de tarjeta sin animar la pista. */
+@media (prefers-reduced-motion: reduce) {
+  .tg-carrusel__pista { transition: none; }
+}
 .tg-carrusel.is-carrusel {
   /* El padding/margen de 4px ya no hace falta sin el anillo de la tarjeta
      activa, y hacía que el carrusel invadiera el margen del separador. */

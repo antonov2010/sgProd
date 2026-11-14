@@ -357,53 +357,142 @@
       });
     });
 
-    // Carrusel de líneas: 3 tarjetas visibles, avance de una en una.
+    // Carrusel de líneas: 3 tarjetas visibles y bucle infinito.
+    // Se clonan las primeras tarjetas al final y las últimas al inicio; así el
+    // avance desde la última posición (y el retroceso desde la primera) sigue
+    // en el sentido del movimiento. Al terminar la transición se salta sin
+    // animación a la posición equivalente (mismo contenido, salto invisible).
     var carrusel = raiz.querySelector('[data-carrusel]');
     if (!carrusel) return;
     var pista = carrusel.querySelector('[data-carrusel-pista]');
     if (!pista) return;
-    var fichas = pista.querySelectorAll('.tg-linea');
-    if (!fichas.length) return;
+    var reales = Array.prototype.slice.call(pista.querySelectorAll('.tg-linea'));
+    if (!reales.length) return;
     var anterior = carrusel.querySelector('[data-carrusel-prev]');
     var siguiente = carrusel.querySelector('[data-carrusel-next]');
     var VISIBLES = 3;
     var INTERVALO = 30000;
-    var maximo = Math.max(0, fichas.length - VISIBLES);
-    var indice = 0;
+    var total = reales.length;
+    var bucle = total > VISIBLES;
+    var inicio = 0; // clones colocados delante de la primera tarjeta real
+    var indice = 0; // tarjeta real que ocupa la primera posición visible
+    var pendiente = 0; // clic pedido mientras se resuelve un salto de bucle
     var temporizador = null;
     var reducido = window.matchMedia
       ? window.matchMedia('(prefers-reduced-motion: reduce)')
       : null;
 
-    for (var i = 0; i < fichas.length; i++) {
-      if (fichas[i].classList.contains('is-activa')) {
-        indice = Math.min(i, maximo);
-        break;
+    function posicion(valor) {
+      return ((valor % total) + total) % total;
+    }
+
+    function esReducido() {
+      return !!(reducido && reducido.matches);
+    }
+
+    // Los clones son solo pintura: sin ids propios, sin foco y ocultos al lector.
+    function prepararClon(ficha) {
+      ficha.setAttribute('data-clon', 'true');
+      ficha.setAttribute('aria-hidden', 'true');
+      ficha.classList.remove('is-activa');
+      ficha.removeAttribute('id');
+      var conId = ficha.querySelectorAll('[id]');
+      for (var i = 0; i < conId.length; i++) conId[i].removeAttribute('id');
+      var botonesClon = ficha.querySelectorAll('button');
+      for (var j = 0; j < botonesClon.length; j++) {
+        botonesClon[j].setAttribute('tabindex', '-1');
       }
+      return ficha;
+    }
+
+    function clonar() {
+      if (!bucle) return;
+      var cuantos = Math.min(VISIBLES, total - 1);
+      var cola = document.createDocumentFragment();
+      for (var i = 0; i < cuantos; i++) {
+        cola.appendChild(prepararClon(reales[i].cloneNode(true)));
+      }
+      pista.appendChild(cola);
+      var cabeza = document.createDocumentFragment();
+      for (var j = total - cuantos; j < total; j++) {
+        cabeza.appendChild(prepararClon(reales[j].cloneNode(true)));
+      }
+      pista.insertBefore(cabeza, pista.firstChild);
+      inicio = cuantos;
+    }
+
+    function tarjetasDePista() {
+      return pista.children;
     }
 
     function paso() {
-      if (fichas.length < 2) return 0;
+      var lista = tarjetasDePista();
+      if (lista.length < 2) return 0;
       var estilo = window.getComputedStyle(pista);
       var hueco = parseFloat(estilo.columnGap || estilo.gap) || 0;
-      return fichas[0].getBoundingClientRect().width + hueco;
+      return lista[0].getBoundingClientRect().width + hueco;
     }
 
-    function pintar() {
-      pista.style.transform = 'translateX(' + (-indice * paso()) + 'px)';
-      for (var j = 0; j < fichas.length; j++) {
-        var fuera = j < indice || j >= indice + VISIBLES;
-        fichas[j].setAttribute('aria-hidden', fuera ? 'true' : 'false');
-        if ('inert' in fichas[j]) fichas[j].inert = fuera;
+    function actualizarAccesibilidad() {
+      var lista = tarjetasDePista();
+      var desde = inicio + indice;
+      for (var i = 0; i < lista.length; i++) {
+        var ficha = lista[i];
+        var clon = ficha.hasAttribute('data-clon');
+        var visible = !clon && i >= desde && i < desde + VISIBLES;
+        if (visible) {
+          ficha.removeAttribute('aria-hidden');
+        } else {
+          ficha.setAttribute('aria-hidden', 'true');
+        }
+        var boton = ficha.querySelector('.tg-ver');
+        if (boton) boton.tabIndex = visible ? 0 : -1;
       }
-      if (anterior) anterior.disabled = (maximo === 0);
-      if (siguiente) siguiente.disabled = (maximo === 0);
+      if (anterior) anterior.disabled = !bucle;
+      if (siguiente) siguiente.disabled = !bucle;
+    }
+
+    function pintar(animar) {
+      if (!animar) pista.style.transition = 'none';
+      pista.style.transform =
+        'translateX(' + (-(inicio + indice) * paso()) + 'px)';
+      if (!animar) {
+        void pista.offsetWidth;
+        pista.style.transition = '';
+      }
+      actualizarAccesibilidad();
+    }
+
+    // Si el índice quedó en la zona clonada, salta sin animación a la posición
+    // equivalente (mismo contenido, sin retroceso visible).
+    function normalizar() {
+      if (indice >= 0 && indice < total) return;
+      indice = posicion(indice);
+      pintar(false);
     }
 
     function mover(delta) {
-      if (maximo === 0) return;
-      indice = (indice + delta + maximo + 1) % (maximo + 1);
-      pintar();
+      if (!bucle) return;
+      if (indice < 0 || indice >= total) {
+        // Un salto de bucle está en curso: se atiende al terminar la transición
+        // para no cortar la animación con un reposicionamiento a media pista.
+        pendiente = delta;
+        return;
+      }
+      indice += delta;
+      pintar(true);
+      // Con movimiento reducido no hay transición que espere: se reposiciona ya.
+      if (esReducido()) {
+        normalizar();
+        atenderPendiente();
+      }
+    }
+
+    function atenderPendiente() {
+      if (!pendiente) return;
+      var delta = pendiente;
+      pendiente = 0;
+      mover(delta);
     }
 
     function detener() {
@@ -415,11 +504,42 @@
 
     function arrancar() {
       detener();
-      if (maximo === 0) return;
-      if (reducido && reducido.matches) return;
+      if (!bucle || esReducido()) return;
       temporizador = window.setInterval(function () { mover(1); }, INTERVALO);
     }
 
+    var tope = Math.max(0, total - VISIBLES);
+    for (var i = 0; i < reales.length; i++) {
+      if (reales[i].classList.contains('is-activa')) {
+        // Se abre en una ventana de tarjetas reales, sin clones a la vista.
+        indice = Math.min(i, tope);
+        break;
+      }
+    }
+
+    clonar();
+
+    // El botón «Ver tendencia» de un clon delega en la tarjeta real equivalente;
+    // los clones no añaden controles ni entradas en el orden de tabulación.
+    pista.addEventListener('click', function (evento) {
+      var boton = evento.target.closest ? evento.target.closest('.tg-ver') : null;
+      if (!boton) return;
+      var ficha = boton.closest('.tg-linea');
+      if (!ficha || !ficha.hasAttribute('data-clon')) return;
+      for (var j = 0; j < reales.length; j++) {
+        if (reales[j].getAttribute('data-linea') === ficha.getAttribute('data-linea')) {
+          var original = reales[j].querySelector('.tg-ver');
+          if (original) original.click();
+          return;
+        }
+      }
+    });
+    pista.addEventListener('transitionend', function (evento) {
+      if (evento.target === pista && evento.propertyName === 'transform') {
+        normalizar();
+        atenderPendiente();
+      }
+    });
     if (anterior) anterior.addEventListener('click', function () { mover(-1); });
     if (siguiente) siguiente.addEventListener('click', function () { mover(1); });
     carrusel.addEventListener('mouseenter', detener);
@@ -428,15 +548,27 @@
     carrusel.addEventListener('focusout', function (evento) {
       if (!carrusel.contains(evento.relatedTarget)) arrancar();
     });
-    window.addEventListener('resize', pintar);
+    window.addEventListener('resize', function () {
+      normalizar();
+      pintar(false);
+      atenderPendiente();
+    });
     if (reducido && reducido.addEventListener) {
       reducido.addEventListener('change', function () {
-        if (reducido.matches) detener(); else arrancar();
+        if (esReducido()) {
+          detener();
+          normalizar();
+          atenderPendiente();
+        } else {
+          arrancar();
+        }
       });
     }
 
-    carrusel.classList.add('is-carrusel');
-    pintar();
-    arrancar();
+    if (bucle) {
+      carrusel.classList.add('is-carrusel');
+      pintar(false);
+      arrancar();
+    }
   })();
 </script>
