@@ -62,6 +62,8 @@ def captura_horaria(request):
         hora = services.hora_actual()
 
     filas = services.estaciones_para_capturar(linea, turno, hora, fecha)
+    # Contador de la pantalla: solo las estaciones con operador son capturables.
+    capturables = [fila for fila in filas if fila.asignacion]
 
     return render(
         request,
@@ -73,6 +75,8 @@ def captura_horaria(request):
             "hora": hora,
             "filas": filas,
             "sin_asignar": sum(1 for f in filas if f.asignacion is None),
+            "pendientes": sum(1 for fila in capturables if fila.registro is None),
+            "total_capturables": len(capturables),
             "historial": services.historial_del_turno(linea, turno, fecha),
             "catalogo_defectos": CatalogoDefecto.objects.order_by("codigo"),
         },

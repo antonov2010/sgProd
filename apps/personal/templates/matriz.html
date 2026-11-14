@@ -74,7 +74,8 @@
     .matriz-table tr:hover td {
         background-color: #f1f5f9;
     }
-    .matriz-table td.cell-empleado {
+    .matriz-table td.cell-empleado,
+    .matriz-table th.cell-empleado {
         text-align: left;
         font-weight: 600;
         color: #1e293b;
@@ -82,8 +83,16 @@
         left: 0;
         z-index: 2;
         border-right: 2px solid #e2e8f0;
+        border-bottom: 1px solid #edf2f7;
         padding-left: 16px;
         white-space: nowrap;
+        background-color: #ffffff;
+    }
+    .matriz-table tr:nth-child(even) th.cell-empleado {
+        background-color: #f8fafc;
+    }
+    .matriz-table tr:hover th.cell-empleado {
+        background-color: #f1f5f9;
     }
 
     .sg-select-nivel {
@@ -95,8 +104,13 @@
         text-align: center;
         white-space: nowrap;
         cursor: pointer;
-        outline: none;
     }
+    .sg-select-nivel:focus-visible {
+        outline: 3px solid var(--sg-thread);
+        outline-offset: 2px;
+    }
+    .matriz-estado { margin: 0 0 0.75rem; min-height: 1.4em; font-size: 0.9rem; color: #b91c1c; }
+    .matriz-estado:empty { display: none; }
     .sg-badge-instructor { background-color: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-weight: 700; }
     .sg-badge-experto { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
     .sg-badge-autonomo { background-color: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
@@ -114,11 +128,11 @@
         
         <div style="display: flex; gap: 10px; align-items: center;">
             <a href="?sugerir=1&turno={{ turno }}" style="background-color: #0d5c75; color: #ffffff; border: 1px solid #0d5c75; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                ⚡ Ajustes de distribución de línea
+                <span aria-hidden="true">⚡</span> Ajustes de distribución de línea
             </a>
 
             <a href="{% url 'dashboard:pantalla_jefe' %}" style="background-color: #ffffff; color: #0d5c75; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
-                ← Volver al Tablero
+                <span aria-hidden="true">←</span> Volver al Tablero
             </a>
         </div>
     </header>
@@ -127,11 +141,13 @@
         <div class="sg-empty">No hay información de línea asignada para este usuario.</div>
     {% else %}
 
+        <p id="matriz-estado" class="matriz-estado" role="status" aria-live="polite"></p>
+
         <!-- TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA -->
         <div class="matriz-card" style="border: 2px solid #0d5c75;">
             <div style="padding: 1rem 1.25rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
                 <h2 style="margin: 0; color: #0d5c75; font-size: 1.1rem; font-weight: 700;">
-                    📌 Asignación Vigente de la Línea (Turno {{ turno }})
+                    <span aria-hidden="true">📌</span> Asignación Vigente de la Línea (Turno {{ turno }})
                 </h2>
                 <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
                     Estado oficial estático de los operadores asignados a cada estación de trabajo.
@@ -139,19 +155,22 @@
             </div>
             <div class="matriz-table-wrapper">
                 <table class="matriz-table">
+                    <caption class="visually-hidden">
+                        Asignación vigente de la línea en el turno {{ turno }}.
+                    </caption>
                     <thead>
                         <tr>
-                            <th class="col-empleado">Estación de Trabajo</th>
+                            <th scope="col" class="col-empleado">Estación de Trabajo</th>
                             {% for item in tabla_vigente_estatica %}
-                                <th>{{ item.estacion.nombre }}</th>
+                                <th scope="col">{{ item.estacion.nombre }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="cell-empleado" style="background-color: #e0f2fe; color: #075985;">
+                            <th scope="row" class="cell-empleado" style="background-color: #e0f2fe; color: #075985;">
                                 <strong>Operador Vigente</strong>
-                            </td>
+                            </th>
                             {% for item in tabla_vigente_estatica %}
                                 <td style="{% if item.es_principiante %}background-color: #fffbeb; border: 2px solid #f59e0b;{% endif %}">
                                     {% if item.empleado_asignado %}
@@ -162,19 +181,19 @@
                                         {% if item.es_principiante %}
                                             <div style="margin-top: 6px; padding: 4px 6px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 0.75rem; color: #92400e; font-weight: 700;">
                                                 {% if item.nivel == 'Principiante' %}
-                                                    ⚠️ Alerta: Principiante
+                                                    <span aria-hidden="true">⚠️</span> Alerta: Principiante
                                                 {% else %}
-                                                    ⚠️ Sin Nivel Asignado
+                                                    <span aria-hidden="true">⚠️</span> Sin Nivel Asignado
                                                 {% endif %}
                                             </div>
                                             {% if item.instructor_apoyo %}
                                                 <div style="margin-top: 4px; font-size: 0.72rem; color: #1e3a8a;">
-                                                    👨‍🏫 <strong>Instructor sugerido:</strong><br>
+                                                    <span aria-hidden="true">👨‍🏫</span> <strong>Instructor sugerido:</strong><br>
                                                     {{ item.instructor_apoyo.nombre }}
                                                 </div>
                                             {% else %}
                                                 <div style="margin-top: 4px; font-size: 0.72rem; color: #dc2626; font-style: italic;">
-                                                    ⚠️ Sin instructor disponible
+                                                    <span aria-hidden="true">⚠️</span> Sin instructor disponible
                                                 </div>
                                             {% endif %}
                                         {% else %}
@@ -185,7 +204,7 @@
 
                                     {% else %}
                                         <span style="color: #dc2626; font-weight: 700; font-size: 0.85rem;">
-                                            ⚠️ Descubierta
+                                            <span aria-hidden="true">⚠️</span> Descubierta
                                         </span>
                                     {% endif %}
                                 </td>
@@ -206,7 +225,7 @@
             <div style="padding: 1rem 1.25rem; border-bottom: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <h2 style="margin: 0; color: #166534; font-size: 1.1rem; font-weight: 700;">
-                        ⚡ Propuesta de Distribución Sugerida (RF-1.3)
+                        <span aria-hidden="true">⚡</span> Propuesta de Distribución Sugerida (RF-1.3)
                     </h2>
                     <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #15803d;">
                         Revisa la recomendación o ajusta manualmente los operadores antes de guardar.
@@ -215,37 +234,41 @@
 
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" style="background-color: #ffffff; color: #dc2626; border: 1px solid #fca5a5; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;">
-                        ✕ Cancelar sin guardar
+                        <span aria-hidden="true">✕</span> Cancelar sin guardar
                     </a>
 
                     <button type="submit" style="background-color: #166534; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        ✓ Confirmar asignación
+                        <span aria-hidden="true">✓</span> Confirmar asignación
                     </button>
                 </div>
             </div>
 
             <div class="matriz-table-wrapper">
                 <table class="matriz-table">
+                    <caption class="visually-hidden">
+                        Propuesta de distribución sugerida de operadores por estación.
+                    </caption>
                     <thead>
                         <tr>
-                            <th class="col-empleado" style="background-color: #166534;">Sugerencia RF-1.3</th>
+                            <th scope="col" class="col-empleado" style="background-color: #166534;">Sugerencia RF-1.3</th>
                             {% for item in sugerencia_propuesta.asignaciones %}
-                                <th style="background-color: #166534;">{{ item.estacion.nombre }}</th>
+                                <th scope="col" style="background-color: #166534;">{{ item.estacion.nombre }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="cell-empleado" style="background-color: #dcfce7; color: #166534;">
+                            <th scope="row" class="cell-empleado" style="background-color: #dcfce7; color: #166534;">
                                 <strong>Operador Propuesto</strong>
-                            </td>
+                            </th>
                             {% for item in sugerencia_propuesta.asignaciones %}
                                 <td style="background-color: #ffffff; {% if item.es_principiante %}border: 2px solid #f59e0b; background-color: #fffbeb;{% endif %}">
-                                    <select name="estacion_{{ item.estacion.id }}" 
+                                    <select name="estacion_{{ item.estacion.id }}"
+                                            aria-label="Operador propuesto para {{ item.estacion.nombre }}"
                                             onchange="verificarPrincipianteSugerencia(this)"
                                             style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #166534; font-size: 0.85rem; font-weight: 600; color: #0f172a;">
                                         <option value="" {% if item.descubierta %}selected{% endif %}>
-                                            -- ⚠️ Descubierta --
+                                            -- Descubierta --
                                         </option>
                                         {% for op in todos_los_operadores %}
                                             <option value="{{ op.id }}" {% if item.empleado and item.empleado.id == op.id %}selected{% endif %}>
@@ -258,14 +281,14 @@
                                         {% if item.empleado and item.es_principiante %}
                                             <div style="margin-top: 6px; padding: 3px 6px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 0.73rem; color: #92400e; font-weight: 700;">
                                                 {% if item.nivel == 'Principiante' %}
-                                                    ⚠️ Operador Principiante
+                                                    <span aria-hidden="true">⚠️</span> Operador Principiante
                                                 {% else %}
-                                                    ⚠️ Sin Nivel Asignado
+                                                    <span aria-hidden="true">⚠️</span> Sin Nivel Asignado
                                                 {% endif %}
                                             </div>
                                             {% if item.instructor_apoyo %}
                                                 <div style="margin-top: 3px; font-size: 0.72rem; color: #1e3a8a;">
-                                                    👨‍🏫 Apoyo: {{ item.instructor_apoyo.nombre }}
+                                                    <span aria-hidden="true">👨‍🏫</span> Apoyo: {{ item.instructor_apoyo.nombre }}
                                                 </div>
                                             {% endif %}
                                         {% endif %}
@@ -286,34 +309,44 @@
         <div class="matriz-card">
             <div class="matriz-table-wrapper">
                 <table class="matriz-table">
+                    <caption class="visually-hidden">
+                        Matriz general de habilidades por operador y estación.
+                    </caption>
                     <thead>
                         <tr>
-                            <th class="col-empleado">Empleado / Operador</th>
+                            <th scope="col" class="col-empleado">Empleado / Operador</th>
                             {% for est in estaciones %}
-                                <th>{{ est.nombre }}</th>
+                                <th scope="col">{{ est.nombre }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for fila in matriz %}
                             <tr>
-                                <td class="cell-empleado">
+                                <th scope="row" class="cell-empleado">
                                     <div style="font-size: 0.75rem; color: #64748b;">{{ fila.empleado.numero_empleado }}</div>
                                     <div>{{ fila.empleado.nombre }}</div>
-                                </td>
-                                {% for col in fila.niveles %}
-                                    <td>
-                                        <select class="sg-select-nivel {% if col.nivel == 'Instructor' %}sg-badge-instructor{% elif col.nivel == 'Experto' %}sg-badge-experto{% elif col.nivel == 'Autónomo' %}sg-badge-autonomo{% elif col.nivel == 'Principiante' %}sg-badge-principiante{% else %}sg-badge-sinnivel{% endif %}"
-                                                data-empleado-id="{{ fila.empleado.id }}"
-                                                data-estacion-id="{{ col.estacion_id }}"
-                                                onchange="actualizarNivel(this)">
-                                            <option value="" {% if not col.nivel %}selected{% endif %}>Sin nivel</option>
-                                            <option value="Principiante" {% if col.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
-                                            <option value="Autónomo" {% if col.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
-                                            <option value="Experto" {% if col.nivel == 'Experto' %}selected{% endif %}>Experto</option>
-                                            <option value="Instructor" {% if col.nivel == 'Instructor' %}selected{% endif %}>Instructor</option>
-                                        </select>
-                                    </td>
+                                </th>
+                                {% for est in estaciones %}
+                                    {% for col in fila.niveles %}
+                                        {% if col.estacion_id == est.id %}
+                                        <td>
+                                            <select class="sg-select-nivel {% if col.nivel == 'Instructor' %}sg-badge-instructor{% elif col.nivel == 'Experto' %}sg-badge-experto{% elif col.nivel == 'Autónomo' %}sg-badge-autonomo{% elif col.nivel == 'Principiante' %}sg-badge-principiante{% else %}sg-badge-sinnivel{% endif %}"
+                                                    id="nivel-{{ fila.empleado.id }}-{{ est.id }}"
+                                                    aria-label="Nivel de {{ fila.empleado.nombre }} en {{ est.nombre }}"
+                                                    data-empleado-id="{{ fila.empleado.id }}"
+                                                    data-estacion-id="{{ col.estacion_id }}"
+                                                    data-valor-anterior="{{ col.nivel|default:'' }}"
+                                                    onchange="actualizarNivel(this)">
+                                                <option value="" {% if not col.nivel %}selected{% endif %}>Sin nivel</option>
+                                                <option value="Principiante" {% if col.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
+                                                <option value="Autónomo" {% if col.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
+                                                <option value="Experto" {% if col.nivel == 'Experto' %}selected{% endif %}>Experto</option>
+                                                <option value="Instructor" {% if col.nivel == 'Instructor' %}selected{% endif %}>Instructor</option>
+                                            </select>
+                                        </td>
+                                        {% endif %}
+                                    {% endfor %}
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -330,6 +363,18 @@
 <script>
 const MAPA_NIVELES = JSON.parse(document.getElementById('mapa-niveles').textContent);
 const INSTRUCTORES = JSON.parse(document.getElementById('instructores-apoyo').textContent);
+
+function mostrarEstadoMatriz(mensaje) {
+    const estado = document.getElementById('matriz-estado');
+    if (estado) estado.textContent = mensaje;
+}
+
+function emojiOculto(emoji) {
+    const span = document.createElement('span');
+    span.setAttribute('aria-hidden', 'true');
+    span.textContent = emoji + ' ';
+    return span;
+}
 
 function verificarPrincipianteSugerencia(selectElement) {
     const empleadoId = selectElement.value;
@@ -353,10 +398,10 @@ function verificarPrincipianteSugerencia(selectElement) {
         tdPadre.style.backgroundColor = '#fffbeb';
         tdPadre.style.border = '2px solid #f59e0b';
         
-        const textoEtiqueta = (nivel === 'Principiante') ? '⚠️ Operador Principiante' : '⚠️ Sin Nivel Asignado';
+        const textoEtiqueta = (nivel === 'Principiante') ? 'Operador Principiante' : 'Sin Nivel Asignado';
         const cajaAlerta = document.createElement('div');
         cajaAlerta.style.cssText = 'margin-top: 6px; padding: 3px 6px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 0.73rem; color: #92400e; font-weight: 700;';
-        cajaAlerta.textContent = textoEtiqueta;
+        cajaAlerta.append(emojiOculto('⚠️'), document.createTextNode(textoEtiqueta));
         alertaContainer.appendChild(cajaAlerta);
 
         // US-09: además de la alerta, se sugiere un Instructor de la estación.
@@ -365,7 +410,7 @@ function verificarPrincipianteSugerencia(selectElement) {
         if (instructor) {
             const apoyo = document.createElement('div');
             apoyo.style.cssText = 'margin-top: 3px; font-size: 0.72rem; color: #1e3a8a;';
-            apoyo.textContent = `👨‍🏫 Apoyo: ${instructor}`;
+            apoyo.append(emojiOculto('👨‍🏫'), document.createTextNode(`Apoyo: ${instructor}`));
             alertaContainer.appendChild(apoyo);
         }
     } else {
@@ -379,6 +424,7 @@ function actualizarNivel(selectElement) {
     const estacionId = selectElement.getAttribute('data-estacion-id');
     const nuevoNivel = selectElement.value;
     const nivelAnteriorClass = selectElement.className;
+    const valorAnterior = selectElement.getAttribute('data-valor-anterior') || '';
 
     selectElement.className = 'sg-select-nivel ';
     if (nuevoNivel === 'Instructor') selectElement.classList.add('sg-badge-instructor');
@@ -386,6 +432,8 @@ function actualizarNivel(selectElement) {
     else if (nuevoNivel === 'Autónomo') selectElement.classList.add('sg-badge-autonomo');
     else if (nuevoNivel === 'Principiante') selectElement.classList.add('sg-badge-principiante');
     else selectElement.classList.add('sg-badge-sinnivel');
+
+    mostrarEstadoMatriz('');
 
     fetch("{% url 'personal:actualizar_nivel_matriz' %}", {
         method: "POST",
@@ -402,14 +450,18 @@ function actualizarNivel(selectElement) {
     .then(response => response.json().then(data => ({ status: response.status, body: data })))
     .then(res => {
         if (!res.body.success) {
-            alert("Error del sistema: " + (res.body.error || "No se pudo actualizar el nivel"));
+            selectElement.value = valorAnterior;
             selectElement.className = nivelAnteriorClass;
+            mostrarEstadoMatriz("Error del sistema: " + (res.body.error || "No se pudo actualizar el nivel"));
+        } else {
+            selectElement.setAttribute('data-valor-anterior', nuevoNivel);
         }
     })
     .catch(error => {
         console.error("Error al actualizar:", error);
-        alert("Ocurrió un error al guardar los cambios.");
+        selectElement.value = valorAnterior;
         selectElement.className = nivelAnteriorClass;
+        mostrarEstadoMatriz("Ocurrió un error al guardar los cambios.");
     });
 }
 </script>

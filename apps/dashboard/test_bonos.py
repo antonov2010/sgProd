@@ -142,6 +142,64 @@ def test_la_lista_de_elegibles_se_pagina_de_diez_en_diez(client, entrar, base_pl
     assert "Anterior" in html_ultima
 
 
+def test_la_paginacion_muestra_el_rango_real_de_cada_pagina(client, entrar, base_planta):
+    """«Mostrando 1–10 de 23» cambia a 21–23 en la última página."""
+    for indice in range(1, 24):
+        crear_elegible(base_planta, indice)
+    entrar("gerente")
+
+    primera = client.get("/dashboard/gerente/").content.decode()
+    assert "Mostrando 1–10 de 23" in primera
+
+    ultima = client.get("/dashboard/gerente/?pagina=3").content.decode()
+    assert "Mostrando 21–23 de 23" in ultima
+
+
+def test_la_tabla_de_bonos_muestra_la_tasa_real_de_defectos(
+    client, entrar, base_planta, monkeypatch
+):
+    """La columna «Defectos» no puede quedar fija en «0 (0.0 %)».
+
+    La regla actual solo hace elegibles a quienes no tienen rechazadas, así que
+    se simula la salida de ``bonos.py`` con una fila con defectos para verificar
+    que la plantilla usa ``rechazadas`` y ``tasa_defectos``.
+    """
+    bono_con_defectos = {
+        "periodo": {
+            "inicio": date(2026, 1, 1),
+            "fin": date(2026, 1, 7),
+            "tipo": "Últimos N días (ventana móvil)",
+            "etiqueta": "ventana móvil",
+        },
+        "elegibles": [
+            {
+                "empleado_id": base_planta["op_defecto"].id,
+                "numero_empleado": "OP-02",
+                "nombre": "Mario Rechazo",
+                "aceptadas": 40,
+                "rechazadas": 7,
+                "retrabajo": 3,
+                "total_piezas": 50,
+                "total_registros": 1,
+                "fpy": 80.0,
+                "tasa_defectos": 14.0,
+                "registros": [],
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        "apps.dashboard.views.calcular_elegibles_bono", lambda: bono_con_defectos
+    )
+    entrar("gerente")
+
+    html = client.get("/dashboard/gerente/").content.decode()
+
+    assert "Mario Rechazo" in html
+    assert "7 (14.0 %)" in html
+    assert "sg-badge--neutral" in html
+    assert "0 (0.0 %)" not in html
+
+
 def test_el_tablero_gerencial_muestra_la_etiqueta_del_periodo(client, entrar, base_planta):
     crear_elegible(base_planta, 1)
     entrar("gerente")

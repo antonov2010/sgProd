@@ -197,6 +197,17 @@ def test_la_pantalla_muestra_las_8_estaciones_con_su_operador(jefe_en_captura, p
     assert html.count("data-asignacion=") == 8
 
 
+def test_sin_catalogo_de_defectos_avisa_y_enlaza_al_admin(jefe_en_captura):
+    """Sin motivos de defecto no basta el placeholder: se avisa y se enlaza al Admin."""
+    CatalogoDefecto.objects.all().delete()
+
+    html = jefe_en_captura.get(reverse("calidad:captura")).content.decode()
+
+    assert "No hay motivos de defecto en el catálogo" in html
+    assert 'href="/admin/"' in html
+    assert "8 de 8 sin capturar" in html
+
+
 def test_un_operador_dado_de_baja_no_queda_asignado(client, planta):
     """La captura respeta el hook de asistencia (RF-1.4): solo personal presente."""
     baja = planta["operadores"][1]

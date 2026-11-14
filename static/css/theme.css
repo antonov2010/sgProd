@@ -15,7 +15,8 @@
   --sg-warn: #C98A00;       /* retrabajo */
   --sg-bad: #C8322B;        /* rechazada */
   --sg-ok-bg: #E3F4EA; --sg-warn-bg: #FFF1CC; --sg-bad-bg: #FBE4E2;
-  --sg-ok-fg: #1E8E4E; --sg-warn-fg: #8A5F00; --sg-bad-fg: #C8322B; /* texto de etiquetas */
+  /* Texto de etiquetas: oscurecido para mantener ≥ 4.5:1 sobre su fondo. */
+  --sg-ok-fg: #176E3B; --sg-warn-fg: #8A5F00; --sg-bad-fg: #A82B25;
   --sg-radius: 10px;
   --sg-touch: 56px;         /* alto mínimo de botones en planta */
   --sg-font-head: "Barlow Semi Condensed", "Arial Narrow", sans-serif;
@@ -26,6 +27,7 @@
     --sg-ink: #E8EEF0; --sg-paper: #0F171D; --sg-card: #18232B; --sg-line: #2C3B45;
     --sg-muted: #9AACB6; --sg-teal: #3FB0C8; --sg-teal-dark: #2A8CA3;
     --sg-nav: #1F7E94; --sg-primary: #1A7A92; --sg-primary-dark: #146679;
+    --sg-ok: #4CC97C; --sg-warn: #F0B24A; --sg-bad: #F0736B;
     --sg-ok-fg: #7EE0A6; --sg-warn-fg: #FFD066; --sg-bad-fg: #FF9A92;
     --sg-ok-bg: #12301F; --sg-warn-bg: #3A2D06; --sg-bad-bg: #3B1512;
   }
@@ -42,9 +44,30 @@ h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.2rem; }
 .sg-nav .sg-logo { font: 700 1.5rem var(--sg-font-head); letter-spacing: .02em; }
 .sg-nav .sg-logo b { color: var(--sg-thread); }
 .sg-nav a { color: #fff; text-decoration: none; padding: .6rem .9rem; border-radius: 8px; }
-.sg-nav a:hover, .sg-nav a[aria-current="page"] { background: rgba(255,255,255,.16); }
+.sg-nav a:hover { background: rgba(255,255,255,.16); }
+/* El enlace activo no depende solo del fondo: negrita + subrayado. El fondo
+   oscurecido mantiene el texto blanco por encima de 4.5:1 en ambos temas. */
+.sg-nav a[aria-current="page"] {
+  background: rgba(0,0,0,.25);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: .2em;
+}
 .sg-nav a:focus-visible, .sg-btn:focus-visible { outline: 3px solid var(--sg-thread); outline-offset: 2px; }
 .sg-main { max-width: 1100px; margin: 0 auto; padding: 1.25rem; }
+
+/* Contenido solo para lectores de pantalla */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Tarjetas */
 .sg-card { background: var(--sg-card); border: 1px solid var(--sg-line);
@@ -69,6 +92,12 @@ h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.2rem; }
 .sg-badge--ok { background: var(--sg-ok-bg); color: var(--sg-ok-fg); }
 .sg-badge--warn { background: var(--sg-warn-bg); color: var(--sg-warn-fg); }
 .sg-badge--bad { background: var(--sg-bad-bg); color: var(--sg-bad-fg); }
+.sg-badge--neutral { background: var(--sg-line); color: var(--sg-ink); }
+
+/* Cifras alineadas en tablas y enlaces con objetivo táctil de 44 px */
+.sg-num { font-variant-numeric: tabular-nums; }
+.sg-link-touch { display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; padding: 0 .35rem; }
 
 /* Formularios y tablas */
 .sg-field { display: block; margin-bottom: 1rem; font-weight: 600; }

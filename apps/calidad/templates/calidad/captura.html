@@ -26,28 +26,35 @@
   .cap-card h2 { font-size: 1.35rem; margin: 0; }
   .cap-op { margin: 0; color: var(--sg-muted); }
   .cap-campo { display: grid; grid-template-columns: var(--sg-touch) 1fr var(--sg-touch); align-items: center; gap: .25rem .5rem; }
-  .cap-campo span { grid-column: 1 / -1; font: 600 1.05rem var(--sg-font-head); }
-  .cap-campo--ok span { color: var(--sg-ok-fg); }
-  .cap-campo--bad span { color: var(--sg-bad-fg); }
-  .cap-campo--warn span { color: var(--sg-warn-fg); }
+  .cap-campo > label { grid-column: 1 / -1; font: 600 1.05rem var(--sg-font-head); }
+  .cap-campo--ok label { color: var(--sg-ok-fg); }
+  .cap-campo--bad label { color: var(--sg-bad-fg); }
+  .cap-campo--warn label { color: var(--sg-warn-fg); }
   .cap-campo button { min-height: var(--sg-touch); min-width: var(--sg-touch); padding: 0;
     border: 2px solid var(--sg-line); border-radius: var(--sg-radius); background: var(--sg-paper);
     color: var(--sg-ink); font: 700 1.6rem var(--sg-font-head); cursor: pointer; }
   .cap-campo input { min-height: var(--sg-touch); width: 100%; box-sizing: border-box; text-align: center;
     border: 2px solid var(--sg-line); border-radius: var(--sg-radius); background: var(--sg-card);
     color: var(--sg-ink); font: 700 1.5rem var(--sg-font-head); }
-  .cap-campo input:focus, .cap-defecto select:focus { outline: none; border-color: var(--sg-teal); }
+  .cap-campo input:focus-visible, .cap-defecto select:focus-visible {
+    outline: 3px solid var(--sg-thread); outline-offset: 2px; border-color: var(--sg-teal); }
   .cap-defecto { display: flex; flex-direction: column; gap: .25rem; }
   .cap-defecto[hidden] { display: none; }
-  .cap-defecto span { font: 600 1rem var(--sg-font-head); color: var(--sg-bad-fg); }
+  .cap-defecto > label { font: 600 1rem var(--sg-font-head); color: var(--sg-bad-fg); }
   .cap-defecto select { min-height: var(--sg-touch); width: 100%; box-sizing: border-box; padding: 0 .75rem;
     border: 2px solid var(--sg-line); border-radius: var(--sg-radius); background: var(--sg-card);
     color: var(--sg-ink); font: 600 1rem var(--sg-font-head); }
+  .cap-defecto select[disabled] { display: none; }
+  .cap-defecto-aviso { margin: .25rem 0 0; font-size: .95rem; color: var(--sg-bad-fg); }
+  .cap-defecto-aviso a { color: inherit; text-decoration: underline; }
   .cap-pie { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
   .cap-estado { font-size: .95rem; color: var(--sg-muted); }
   .cap-estado--ok { color: var(--sg-ok-fg); } .cap-estado--error { color: var(--sg-bad-fg); }
   .cap-vacia { color: var(--sg-muted); }
-  .cap-acciones { display: flex; justify-content: flex-end; margin: 1.25rem 0 2rem; }
+  .cap-acciones { display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    flex-wrap: wrap; margin: 1.25rem 0 2rem; }
+  .cap-progreso { margin: 0; font-size: .95rem; color: var(--sg-muted); }
+  .cap-resultado { margin: 0; font-size: .95rem; color: var(--sg-ink); }
   .cap-historial { margin-top: 1rem; overflow-x: auto; }
   .cap-historial td.num { text-align: right; font-variant-numeric: tabular-nums; }
 </style>
@@ -105,35 +112,52 @@
 
         {% if fila.asignacion %}
           {% with r=fila.registro %}
-          <label class="cap-campo cap-campo--ok">
-            <span>Aceptadas</span>
+          <div class="cap-campo cap-campo--ok" role="group"
+               aria-labelledby="lbl-aceptadas-{{ fila.asignacion.id }}">
+            <label id="lbl-aceptadas-{{ fila.asignacion.id }}"
+                   for="aceptadas-{{ fila.asignacion.id }}">Aceptadas</label>
             <button type="button" data-paso="-1" aria-label="Restar una aceptada">−</button>
-            <input type="number" name="aceptadas" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_aceptadas|default:0 }}">
+            <input id="aceptadas-{{ fila.asignacion.id }}" type="number" name="aceptadas" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_aceptadas|default:0 }}">
             <button type="button" data-paso="1" aria-label="Sumar una aceptada">+</button>
-          </label>
-          <label class="cap-campo cap-campo--bad">
-            <span>Rechazadas</span>
+          </div>
+          <div class="cap-campo cap-campo--bad" role="group"
+               aria-labelledby="lbl-rechazadas-{{ fila.asignacion.id }}">
+            <label id="lbl-rechazadas-{{ fila.asignacion.id }}"
+                   for="rechazadas-{{ fila.asignacion.id }}">Rechazadas</label>
             <button type="button" data-paso="-1" aria-label="Restar una rechazada">−</button>
-            <input type="number" name="rechazadas" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_rechazadas|default:0 }}">
+            <input id="rechazadas-{{ fila.asignacion.id }}" type="number" name="rechazadas" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_rechazadas|default:0 }}">
             <button type="button" data-paso="1" aria-label="Sumar una rechazada">+</button>
-          </label>
-          <label class="cap-defecto" {% if not r or r.piezas_rechazadas == 0 %}hidden{% endif %}>
-            <span>Motivo de defecto *</span>
-            <select name="defecto_id">
+          </div>
+          <div class="cap-defecto" {% if not r or r.piezas_rechazadas == 0 %}hidden{% endif %}>
+            <label for="defecto-{{ fila.asignacion.id }}">Motivo de defecto *</label>
+            <select id="defecto-{{ fila.asignacion.id }}" name="defecto_id"
+                    {% if not catalogo_defectos %}disabled{% endif %}
+                    {% if catalogo_defectos and r and r.piezas_rechazadas %}required aria-required="true"{% endif %}>
               <option value="">-- Selecciona un motivo --</option>
               {% for d in catalogo_defectos %}
                 <option value="{{ d.id }}" {% if fila.defecto_id == d.id %}selected{% endif %}>
                   {{ d.codigo }} · {{ d.descripcion }}
                 </option>
+              {% empty %}
+                <option value="" disabled>Sin motivos de defecto en el catálogo</option>
               {% endfor %}
             </select>
-          </label>
-          <label class="cap-campo cap-campo--warn">
-            <span>Retrabajo</span>
+            {% if not catalogo_defectos %}
+              <p class="cap-defecto-aviso" role="alert">
+                No hay motivos de defecto en el catálogo: no se puede capturar una
+                estación con piezas rechazadas. Un administrador debe
+                <a href="{% url 'admin:index' %}">registrar motivos en el Admin</a>.
+              </p>
+            {% endif %}
+          </div>
+          <div class="cap-campo cap-campo--warn" role="group"
+               aria-labelledby="lbl-retrabajo-{{ fila.asignacion.id }}">
+            <label id="lbl-retrabajo-{{ fila.asignacion.id }}"
+                   for="retrabajo-{{ fila.asignacion.id }}">Retrabajo</label>
             <button type="button" data-paso="-1" aria-label="Restar un retrabajo">−</button>
-            <input type="number" name="retrabajo" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_retrabajo|default:0 }}">
+            <input id="retrabajo-{{ fila.asignacion.id }}" type="number" name="retrabajo" min="0" max="9999" inputmode="numeric" value="{{ r.piezas_retrabajo|default:0 }}">
             <button type="button" data-paso="1" aria-label="Sumar un retrabajo">+</button>
-          </label>
+          </div>
           <div class="cap-pie">
             <span class="cap-estado {% if r %}cap-estado--ok{% endif %}" role="status">
               {% if r %}Guardado{% else %}Sin capturar{% endif %}
@@ -150,6 +174,12 @@
 
   {% if filas %}
     <div class="cap-acciones">
+      <div>
+        <p class="cap-progreso" id="cap-pendientes" role="status" aria-live="polite">
+          {{ pendientes }} de {{ total_capturables }} sin capturar
+        </p>
+        <p class="cap-resultado" id="cap-resultado" role="status" aria-live="polite"></p>
+      </div>
       <button type="button" class="sg-btn sg-btn--accent" id="guardar-todas">Guardar todas las estaciones</button>
     </div>
   {% endif %}
@@ -201,14 +231,31 @@
         const rechazadas = parseInt(card.querySelector('input[name="rechazadas"]')?.value, 10) || 0;
         const bloqueDefecto = card.querySelector(".cap-defecto");
         const selectDefecto = card.querySelector('select[name="defecto_id"]');
-        if (!bloqueDefecto || !selectDefecto) return;
+        if (!bloqueDefecto) return;
 
         if (rechazadas > 0) {
           bloqueDefecto.hidden = false;
         } else {
           bloqueDefecto.hidden = true;
-          selectDefecto.value = "";
         }
+        if (selectDefecto) {
+          const hayCatalogo = !selectDefecto.disabled;
+          selectDefecto.required = hayCatalogo && rechazadas > 0;
+          selectDefecto.setAttribute(
+            "aria-required", selectDefecto.required ? "true" : "false"
+          );
+          if (rechazadas === 0) selectDefecto.value = "";
+        }
+      }
+
+      function actualizarPendientes() {
+        const contador = document.getElementById("cap-pendientes");
+        if (!contador) return;
+        const tarjetas = document.querySelectorAll(".cap-card[data-asignacion]");
+        const pendientes = [...tarjetas].filter(
+          (card) => card.dataset.estado !== "guardado"
+        ).length;
+        contador.textContent = `${pendientes} de ${tarjetas.length} sin capturar`;
       }
 
       document.querySelectorAll(".cap-campo button[data-paso]").forEach((boton) => {
@@ -220,6 +267,7 @@
           if (input.name === "rechazadas") {
             actualizarVisibilidadDefecto(card);
           }
+          actualizarPendientes();
         });
       });
 
@@ -230,6 +278,7 @@
           if (input.name === "rechazadas") {
             actualizarVisibilidadDefecto(card);
           }
+          actualizarPendientes();
         });
       });
 
@@ -268,12 +317,17 @@
         const estado = card.querySelector(".cap-estado");
         const valor = (nombre) => card.querySelector(`input[name="${nombre}"]`).value;
         const rechazadas = parseInt(valor("rechazadas"), 10) || 0;
-        const defectoId = card.querySelector('select[name="defecto_id"]')?.value || "";
+        const selectDefecto = card.querySelector('select[name="defecto_id"]');
+        const defectoId = selectDefecto?.value || "";
+        const sinCatalogo = Boolean(card.querySelector(".cap-defecto-aviso"));
 
         if (rechazadas > 0 && !defectoId) {
           card.dataset.estado = "error";
           estado.className = "cap-estado cap-estado--error";
-          estado.textContent = "Selecciona un motivo de defecto.";
+          estado.textContent = sinCatalogo
+            ? "No hay motivos de defecto en el catálogo; avisa a un administrador."
+            : "Selecciona un motivo de defecto.";
+          actualizarPendientes();
           return false;
         }
 
@@ -298,11 +352,13 @@
           estado.classList.add("cap-estado--ok");
           estado.textContent = `Guardado · ${datos.ms} ms`;
           pintarHistorial(datos.registro);
+          actualizarPendientes();
           return true;
         } catch (error) {
           card.dataset.estado = "error";
           estado.classList.add("cap-estado--error");
           estado.textContent = error.message || "No se pudo guardar.";
+          actualizarPendientes();
           return false;
         }
       }
@@ -310,11 +366,31 @@
       document.querySelectorAll("[data-guardar]").forEach((boton) => {
         boton.addEventListener("click", () => guardar(boton.closest(".cap-card")));
       });
-      document.getElementById("guardar-todas")?.addEventListener("click", async () => {
-        for (const card of document.querySelectorAll(".cap-card[data-asignacion]")) {
-          await guardar(card);
+
+      const botonTodas = document.getElementById("guardar-todas");
+      botonTodas?.addEventListener("click", async () => {
+        const resultado = document.getElementById("cap-resultado");
+        botonTodas.disabled = true;
+        botonTodas.textContent = "Guardando…";
+        let guardadas = 0;
+        let conError = 0;
+        try {
+          for (const card of document.querySelectorAll(".cap-card[data-asignacion]")) {
+            if (await guardar(card)) guardadas += 1;
+            else conError += 1;
+          }
+          if (resultado) {
+            const textoGuardadas =
+              `${guardadas} ${guardadas === 1 ? "guardada" : "guardadas"}`;
+            resultado.textContent = `${textoGuardadas}, ${conError} con error`;
+          }
+        } finally {
+          botonTodas.disabled = false;
+          botonTodas.textContent = "Guardar todas las estaciones";
         }
       });
+
+      actualizarPendientes();
     })();
   </script>
 {% endif %}

@@ -40,6 +40,13 @@ def pantalla_gerente(request):
     pagina_elegibles = Paginator(bono['elegibles'], 10).get_page(
         request.GET.get('pagina')
     )
+    # Rango visible de la página («Mostrando 1–10 de 31»). get_page() devuelve
+    # 0–0 cuando no hay elegibles, sin levantar EmptyPage.
+    rango_pagina = {
+        'desde': pagina_elegibles.start_index(),
+        'hasta': pagina_elegibles.end_index(),
+        'total': pagina_elegibles.paginator.count,
+    }
     return render(
         request,
         'dashboard/gerente.html',
@@ -48,6 +55,7 @@ def pantalla_gerente(request):
             'tablero_es_ejemplo': es_ejemplo,
             'bono': bono,
             'pagina_elegibles': pagina_elegibles,
+            'rango_pagina': rango_pagina,
         },
     )
 

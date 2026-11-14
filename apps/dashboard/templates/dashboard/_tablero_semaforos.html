@@ -2,6 +2,7 @@
 {# Datos de ejemplo hasta conectar los registros reales. #}
 <style>
   .tg { --tg-ok: var(--sg-ok, #1E8E4E); --tg-warn: var(--sg-warn, #C98A00); --tg-bad: var(--sg-bad, #C8322B);
+        --tg-ok-fg: var(--sg-ok-fg, #1E8E4E); --tg-warn-fg: var(--sg-warn-fg, #8A5F00); --tg-bad-fg: var(--sg-bad-fg, #C8322B);
         --tg-line: var(--sg-line, rgba(128,128,128,.35)); --tg-card: var(--sg-card, transparent);
         --tg-muted: var(--sg-muted, rgba(128,128,128,.95)); --tg-focus: var(--sg-thread, #F2B705);
         margin-bottom: 1.5rem; }
@@ -19,8 +20,8 @@
   .tg-cab { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
   .tg-badge { display: inline-block; padding: .1rem .65rem; border-radius: 999px; font-size: .85rem; font-weight: 700;
               border: 1.5px solid currentColor; white-space: nowrap; }
-  .tg-badge.is-ok { color: var(--tg-ok); } .tg-badge.is-warn { color: var(--tg-warn); }
-  .tg-badge.is-bad { color: var(--tg-bad); } .tg-badge.is-none { color: var(--tg-muted); }
+  .tg-badge.is-ok { color: var(--tg-ok-fg); } .tg-badge.is-warn { color: var(--tg-warn-fg); }
+  .tg-badge.is-bad { color: var(--tg-bad-fg); } .tg-badge.is-none { color: var(--tg-muted); }
   .tg-sec { margin: 1.5rem 0 .25rem; font-size: 1.25rem; }
   .tg-turnos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
   .tg-turno h3 { font-size: 1.05rem; }
@@ -52,6 +53,7 @@
   .tg-ver:hover, .tg-linea.is-activa .tg-ver { background: var(--tg-focus); color: #16222E; }
   .tg-ver:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
   .tg-grafica { width: 100%; height: auto; display: block; }
+  .tg-figura { margin: 0; }
   .tg-grafica text { fill: currentColor; font-size: 12px; }
   .tg-leyenda { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .5rem; color: var(--tg-muted); font-size: .9rem; }
   .tg-leyenda span { display: inline-flex; align-items: center; gap: .4rem; }
@@ -77,7 +79,8 @@
   <p class="tg-aviso">Datos reales del último día con captura horaria.</p>
   {% endif %}
 
-  <section class="tg-kpis" aria-label="Indicadores de planta">
+  <h2 class="visually-hidden" id="titulo-indicadores-planta">Indicadores de planta</h2>
+  <section class="tg-kpis" aria-labelledby="titulo-indicadores-planta">
     {% for k in tablero.kpis %}
     <article class="tg-card tg-kpi is-{{ k.estado }}">
       <div class="tg-cab">
@@ -121,7 +124,8 @@
       </div>
       <div class="tg-resumen">
         <div><strong>{{ l.fpy }}</strong><br><small>FPY de la línea</small></div>
-        <svg class="tg-spark" viewBox="0 0 160 44" role="img" aria-label="Tendencia hora por hora de {{ l.nombre }}">
+        <svg class="tg-spark" viewBox="0 0 160 44" role="img"
+             aria-label="Tendencia de FPY hora por hora de {{ l.nombre }}: {{ l.grafica.resumen }}">
           <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
@@ -156,22 +160,41 @@
   {% with t=l.grafica %}
   <article class="tg-card tg-panel" id="g-{{ l.id }}" {% if l.id != tablero.activa %}hidden{% endif %}>
     <h3>{{ l.nombre }} · FPY por hora</h3>
-    <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
-         aria-label="FPY de {{ l.nombre }} por hora: {{ t.resumen }}">
-      {% for g in t.guias %}
-      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
-      <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
-      {% endfor %}
-      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
-      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
-      <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      {% for p in t.puntos %}
-      <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card, #fff)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
-      {% endfor %}
-      {% for h in t.horas %}
-      <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
-      {% endfor %}
-    </svg>
+    <figure class="tg-figura">
+      <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
+           aria-labelledby="titulo-grafica-{{ l.id }} desc-grafica-{{ l.id }}">
+        <title id="titulo-grafica-{{ l.id }}">FPY de {{ l.nombre }} por hora: {{ t.resumen }}</title>
+        <desc id="desc-grafica-{{ l.id }}">Resumen: {{ t.resumen }}. Umbrales: verde desde {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.</desc>
+        {% for g in t.guias %}
+        <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
+        <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+        {% endfor %}
+        <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        {% for p in t.puntos %}
+        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card, #fff)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
+        {% endfor %}
+        {% for h in t.horas %}
+        <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
+        {% endfor %}
+      </svg>
+      <figcaption class="visually-hidden">
+        FPY de {{ l.nombre }} por hora. {{ t.resumen }}. Umbrales: verde desde
+        {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.
+      </figcaption>
+    </figure>
+    <table class="visually-hidden">
+      <caption>FPY por hora de {{ l.nombre }}</caption>
+      <thead>
+        <tr><th scope="col">Hora</th><th scope="col">FPY</th></tr>
+      </thead>
+      <tbody>
+        {% for p in t.puntos %}
+        <tr><td>{{ p.hora }}</td><td class="sg-num">{{ p.valor }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
     <div class="tg-leyenda">
       <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
       <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
