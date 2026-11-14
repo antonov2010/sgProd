@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import pytest
 from django.conf import settings
+from django.contrib.messages import get_messages
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -225,9 +226,7 @@ def test_dos_estaciones_sin_operador_usan_el_plural_correcto(client, planta):
 
 
 def test_cambiar_la_vigente_no_reescribe_una_estacion_ya_capturada(jefe_en_captura, planta):
-    asignacion_1, asignacion_2 = Asignacion.objects.filter(
-        estacion__in=planta["estaciones"][:2]
-    ).order_by("estacion__orden")
+    asignacion_1 = Asignacion.objects.get(estacion=planta["estaciones"][0], turno=1)
     capturar(jefe_en_captura, asignacion_1)
 
     # El jefe intercambia a los operadores de las estaciones 1 y 2 al confirmar.
@@ -241,18 +240,84 @@ def test_cambiar_la_vigente_no_reescribe_una_estacion_ya_capturada(jefe_en_captu
     jefe_en_captura.get(reverse("calidad:captura"))
 
     asignacion_1.refresh_from_db()
-    asignacion_2.refresh_from_db()
     assert asignacion_1.empleado == planta["operadores"][0]  # ya tenía piezas: se conserva
-    # El operador 1 no puede quedar en dos estaciones: la 2 conserva al suyo y
-    # el conflicto se reporta al jefe.
-    assert asignacion_2.empleado == planta["operadores"][1]
+    # El operador 1 no puede quedar en dos estaciones: la 2 queda descubierta
+    # (no se mueve ni se borra a la estación 1) y el conflicto se avisa.
+    assert not Asignacion.objects.filter(estacion=planta["estaciones"][1]).exists()
+    assert not Asignacion.objects.filter(empleado=planta["operadores"][1]).exists()
     assert (
         Asignacion.objects.filter(fecha=asignacion_1.fecha, turno=1)
         .values("empleado_id")
         .distinct()
         .count()
-        == 8
+        == 7
     )
+
+
+def test_la_primera_estacion_por_orden_gana_y_la_repetida_queda_descubierta(client, planta):
+    """US-08: el cambio manual a la estación 1 prevalece sobre la sugerencia.
+
+    La sugerencia deja a Operador 1 en la estación 4; el jefe lo cambia a mano a
+    la estación 1 sin quitar la sugerencia. Tras confirmar, la 1 conserva al
+    operador, la 4 queda descubierta y se le avisa al jefe.
+    """
+    entrar(client, "SG-0002")
+    estacion_1 = planta["estaciones"][0]
+    estacion_4 = planta["estaciones"][3]
+    operador = planta["operadores"][0]
+
+    # La sugerencia propone a Operador 1 (Instructor) en la estación 4: la
+    # estación 1 queda descubierta por falta de personal con nivel.
+    SkillMatrix.objects.filter(empleado=operador, estacion=estacion_1).delete()
+    SkillMatrix.objects.create(
+        empleado=operador, estacion=estacion_4, nivel=NivelHabilidad.INSTRUCTOR
+    )
+    propuesta = client.get(
+        reverse("personal:matriz_competencias") + "?sugerir=1"
+    ).context["sugerencia_propuesta"]["asignaciones"]
+    mapa = {
+        str(item["estacion"].id): str(item["empleado"].id) if item["empleado"] else ""
+        for item in propuesta
+    }
+    assert mapa[str(estacion_4.id)] == str(operador.id)
+    assert mapa[str(estacion_1.id)] == ""
+    confirmar_asignacion(client, planta, mapa=mapa)
+    assert Asignacion.objects.get(estacion=estacion_4, turno=1).empleado == operador
+    assert not Asignacion.objects.filter(estacion=estacion_1, turno=1).exists()
+
+    # Cambio manual: Operador 1 pasa a la estación 1, pero la sugerencia lo
+    # sigue dejando en la 4. La primera estación por orden gana.
+    mapa[str(estacion_1.id)] = str(operador.id)
+    respuesta = confirmar_asignacion(client, planta, mapa=mapa)
+    assert respuesta.status_code == 302
+
+    assert Asignacion.objects.get(estacion=estacion_1, turno=1).empleado == operador
+    assert not Asignacion.objects.filter(estacion=estacion_4, turno=1).exists()
+    avisos = [str(mensaje) for mensaje in get_messages(respuesta.wsgi_request)]
+    assert any(
+        "Estación 4" in aviso
+        and "ya está asignada a Estación 1" in aviso
+        and "queda descubierta" in aviso
+        for aviso in avisos
+    )
+
+
+def test_mover_un_operador_sin_piezas_libera_su_estacion_anterior(client, planta):
+    """El caso normal de mover de A a B sigue funcionando si A queda vacía."""
+    entrar(client, "SG-0002")
+    confirmar_asignacion(client, planta)
+    estacion_1, estacion_2 = planta["estaciones"][:2]
+    operador_1 = planta["operadores"][0]
+
+    confirmar_asignacion(
+        client,
+        planta,
+        mapa={str(estacion_1.id): "", str(estacion_2.id): str(operador_1.id)},
+    )
+
+    assert not Asignacion.objects.filter(estacion=estacion_1, turno=1).exists()
+    assert Asignacion.objects.get(estacion=estacion_2, turno=1).empleado == operador_1
+    assert not Asignacion.objects.filter(empleado=planta["operadores"][1]).exists()
 
 
 def test_limpiar_una_estacion_sin_piezas_borra_la_asignacion(jefe_en_captura, planta):

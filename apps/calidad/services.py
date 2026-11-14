@@ -115,9 +115,12 @@ def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None
       crean con ``get_or_create``: confirmar dos veces no duplica estaciones;
     * una estación que se envía sin operador queda descubierta: se borra su
       asignación si aún no tiene piezas; si ya las tiene, se conserva;
-    * una persona no se repite en dos estaciones del mismo turno: si la otra
-      estación no tiene piezas se mueve, y si las tiene se conserva lo actual y
-      se reporta el conflicto;
+    * una persona se asigna una sola vez por turno y gana la primera estación
+      por orden (la que el jefe vio primero y suele ser su cambio manual). Si
+      una estación posterior vuelve a traerla, esa estación queda descubierta y
+      se avisa; no se mueve ni se borra la asignación de otra estación para
+      hacerle espacio;
+    * una estación con piezas capturadas conserva a su operador y se avisa;
     * un operador dado de baja no se asigna (RF-1.4).
 
     ``asignacion_vigente``: ``{"<estacion_id>": "<empleado_id>" | None}``.
@@ -143,9 +146,10 @@ def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None
             .select_related("empleado")
             .order_by("id")
         }
-        por_empleado = {
-            asignacion.empleado_id: asignacion for asignacion in existentes.values()
-        }
+        # Ganadores del turno: ``empleado_id -> asignación`` de la primera
+        # estación por orden. Solo crece; una estación posterior nunca mueve ni
+        # borra la asignación de otra estación para "hacer espacio".
+        ganadores = {}
 
         for estacion in estaciones:
             asignacion = existentes.get(estacion.id)
@@ -160,58 +164,55 @@ def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None
                             f"{estacion.nombre}: ya tenía piezas capturadas; se "
                             f"conserva a {asignacion.empleado.nombre}."
                         )
-                    else:
-                        empleado_id = asignacion.empleado_id
-                        asignacion.delete()
-                        existentes.pop(estacion.id, None)
-                        por_empleado.pop(empleado_id, None)
-                        asignacion = None
-                resultado[estacion.id] = asignacion
+                        ganadores.setdefault(asignacion.empleado_id, asignacion)
+                        resultado[estacion.id] = asignacion
+                        continue
+                    asignacion.delete()
+                    existentes.pop(estacion.id, None)
+                    asignacion = None
+                resultado[estacion.id] = None
                 continue
 
-            if asignacion is not None and asignacion.empleado_id == operador.id:
-                resultado[estacion.id] = asignacion
-                continue
-
-            # La estación ya tiene piezas: no se reescribe su historial.
+            # Una estación con piezas capturadas conserva a su operador, aunque
+            # el formulario proponga otro: no se reescribe su historial.
             if asignacion is not None and asignacion.registros_horarios.exists():
-                avisos.append(
-                    f"{estacion.nombre}: ya tenía piezas capturadas; se conserva a "
-                    f"{asignacion.empleado.nombre} y no se asigna a "
-                    f"{operador.nombre}."
-                )
+                anterior = ganadores.get(asignacion.empleado_id)
+                if asignacion.empleado_id == operador.id and anterior is not None:
+                    avisos.append(
+                        f"{estacion.nombre}: ya tenía piezas capturadas; se "
+                        f"conserva a {operador.nombre}, que ya está asignada a "
+                        f"{anterior.estacion.nombre}."
+                    )
+                elif asignacion.empleado_id != operador.id and anterior is not None:
+                    avisos.append(
+                        f"{estacion.nombre}: ya tenía piezas capturadas; se "
+                        f"conserva a {asignacion.empleado.nombre}, que ya está "
+                        f"asignado a {anterior.estacion.nombre}, y no se asigna a "
+                        f"{operador.nombre}."
+                    )
+                elif asignacion.empleado_id != operador.id:
+                    avisos.append(
+                        f"{estacion.nombre}: ya tenía piezas capturadas; se conserva "
+                        f"a {asignacion.empleado.nombre} y no se asigna a "
+                        f"{operador.nombre}."
+                    )
+                ganadores.setdefault(asignacion.empleado_id, asignacion)
                 resultado[estacion.id] = asignacion
                 continue
 
-            # Una persona por estación: si ya está en otra, se mueve o se avisa.
-            otra = por_empleado.get(operador.id)
-            if otra is not None and otra.estacion_id != estacion.id:
-                if otra.registros_horarios.exists():
-                    actual = (
-                        f"se conserva a {asignacion.empleado.nombre}"
-                        if asignacion is not None
-                        else "queda descubierta"
-                    )
-                    avisos.append(
-                        f"Conflicto: {operador.nombre} ya está asignado a "
-                        f"{otra.estacion.nombre} con piezas capturadas; "
-                        f"{estacion.nombre} {actual}."
-                    )
-                    resultado[estacion.id] = asignacion
-                    continue
-
-                # La estación anterior no tiene piezas: se libera para no
-                # duplicar al operador en dos estaciones del mismo turno.
-                existentes.pop(otra.estacion_id, None)
-                if asignacion is None:
-                    otra.estacion = estacion
-                    otra.save(update_fields=["estacion"])
-                    existentes[estacion.id] = otra
-                    por_empleado[operador.id] = otra
-                    resultado[estacion.id] = otra
-                    continue
-                por_empleado.pop(asignacion.empleado_id, None)
-                otra.delete()
+            # Gana la primera estación por orden: si una estación posterior trae
+            # a alguien ya asignado, queda descubierta y se avisa al jefe.
+            anterior = ganadores.get(operador.id)
+            if anterior is not None:
+                if asignacion is not None:
+                    asignacion.delete()
+                    existentes.pop(estacion.id, None)
+                avisos.append(
+                    f"{estacion.nombre}: {operador.nombre} ya está asignada a "
+                    f"{anterior.estacion.nombre}; la estación queda descubierta."
+                )
+                resultado[estacion.id] = None
+                continue
 
             if asignacion is None:
                 asignacion, _ = Asignacion.objects.get_or_create(
@@ -221,11 +222,11 @@ def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None
                     defaults={"empleado": operador},
                 )
                 existentes[estacion.id] = asignacion
-            else:
+            elif asignacion.empleado_id != operador.id:
                 asignacion.empleado = operador
                 asignacion.save(update_fields=["empleado"])
 
-            por_empleado[operador.id] = asignacion
+            ganadores[operador.id] = asignacion
             resultado[estacion.id] = asignacion
 
         niveles = _niveles_de(estaciones, resultado)
