@@ -3,6 +3,7 @@ from functools import wraps
 
 from django.contrib import messages
 from django.core.cache import cache
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -161,6 +162,10 @@ def matriz_competencias(request):
                 "matriz": [],
                 "mapa_niveles": {},
                 "instructores_apoyo": {},
+                "consulta": "",
+                "solo_faltantes": False,
+                "mostrados": 0,
+                "total_operadores": 0,
             },
         )
 
@@ -168,6 +173,28 @@ def matriz_competencias(request):
     empleados = Empleado.objects.filter(
         linea=linea_actual, activo=True, rol__tipo_rol__iexact="operador"
     ).order_by("nombre")
+
+    # Filtros de la matriz general. Solo cambian lo que se muestra en la tabla
+    # de habilidades: el guardado de la asignación vigente sigue trabajando con
+    # todas las estaciones y todos los operadores de la línea.
+    consulta = request.GET.get("q", "").strip()
+    solo_faltantes = request.GET.get("faltantes") == "1"
+    total_operadores = empleados.count()
+    operadores_mostrados = empleados
+    if consulta:
+        operadores_mostrados = operadores_mostrados.filter(
+            Q(nombre__icontains=consulta)
+            | Q(numero_empleado__icontains=consulta)
+        )
+    if solo_faltantes:
+        # «Sin nivel» es no tener fila de SkillMatrix para la estación: la base
+        # nunca guarda un nivel vacío. Basta con que falte una estación.
+        operadores_mostrados = operadores_mostrados.annotate(
+            estaciones_con_nivel=Count(
+                "skillmatrix",
+                filter=Q(skillmatrix__estacion__in=estaciones),
+            )
+        ).filter(estaciones_con_nivel__lt=estaciones.count())
 
     # El turno que se está viendo viaja en el formulario (hidden) y en la URL.
     # Se calcula una sola vez: la tabla y el guardado usan el mismo turno.
@@ -215,7 +242,7 @@ def matriz_competencias(request):
 
     # 3. Construir Matriz General
     matriz = []
-    for emp in empleados:
+    for emp in operadores_mostrados:
         fila_niveles = []
         for est in estaciones:
             nivel = mapa_habilidades.get((emp.id, est.id), None)
@@ -310,6 +337,10 @@ def matriz_competencias(request):
             "todos_los_operadores": empleados,
             "mapa_niveles": mapa_niveles,
             "instructores_apoyo": instructores_apoyo,
+            "consulta": consulta,
+            "solo_faltantes": solo_faltantes,
+            "mostrados": len(matriz),
+            "total_operadores": total_operadores,
         },
     )
 

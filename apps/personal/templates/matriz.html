@@ -45,6 +45,12 @@
         width: 100%;
         overflow-x: auto;
     }
+    /* Solo la tabla general es larga: con altura máxima el thead queda fijo
+       mientras se recorren los operadores en tableta. */
+    .matriz-table-wrapper--scroll {
+        max-height: 75vh;
+        overflow: auto;
+    }
     .matriz-table {
         width: 100%;
         min-width: 1000px;
@@ -60,6 +66,14 @@
         padding: 12px 10px;
         border-bottom: 2px solid var(--sg-teal-dark);
         white-space: nowrap;
+    }
+    .matriz-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+    }
+    .matriz-table thead th.col-empleado {
+        z-index: 5;
     }
     .matriz-table th.col-empleado {
         text-align: left;
@@ -106,9 +120,11 @@
 
     .sg-select-nivel {
         display: inline-block;
-        padding: 4px 8px;
+        min-height: 44px;
+        max-width: 100%;
+        padding: 6px 10px;
         font-family: var(--sg-font-body);
-        font-size: 0.78rem;
+        font-size: 0.9rem;
         font-weight: 600;
         border-radius: 16px;
         text-align: center;
@@ -121,6 +137,66 @@
     }
     .matriz-estado { margin: 0 0 0.75rem; min-height: 1.4em; font-size: 0.9rem; color: var(--sg-bad-fg); }
     .matriz-estado:empty { display: none; }
+
+    /* Barra de filtros de la matriz general (tamaño táctil en tableta). */
+    .matriz-filtros {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 0.75rem 1rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        background: var(--sg-card);
+        border: 1px solid var(--sg-line);
+        border-radius: 12px;
+    }
+    .matriz-filtros__campo {
+        display: flex;
+        flex: 1 1 260px;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+    .matriz-filtros__label {
+        font: 600 0.9rem var(--sg-font-head);
+        color: var(--sg-muted);
+    }
+    .matriz-filtros input[type="search"] {
+        width: 100%;
+        min-height: 44px;
+        padding: 0 0.8rem;
+        border: 2px solid var(--sg-line);
+        border-radius: 8px;
+        background: var(--sg-card);
+        color: var(--sg-ink);
+        font: 400 1rem var(--sg-font-body);
+    }
+    .matriz-filtros input[type="search"]:focus-visible {
+        outline: 3px solid var(--sg-thread);
+        outline-offset: 1px;
+    }
+    .matriz-filtros__check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+    }
+    .matriz-filtros__check input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--sg-primary);
+    }
+    .matriz-filtros__check label {
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .matriz-filtros .sg-cta { min-height: 44px; }
+    .matriz-filtros__resumen {
+        flex-basis: 100%;
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--sg-muted);
+    }
 </style>
 
 <div class="matriz-container">
@@ -132,7 +208,7 @@
         </div>
         
         <div style="display: flex; gap: 10px; align-items: center;">
-            <a href="?sugerir=1&turno={{ turno }}" class="sg-cta">
+            <a href="?sugerir=1&turno={{ turno }}{% if consulta %}&q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&faltantes=1{% endif %}" class="sg-cta">
                 <span aria-hidden="true">⚡</span> Ajustes de distribución de línea
             </a>
 
@@ -311,8 +387,28 @@
         <h2 class="sg-heading-teal" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">
             Matriz General de Habilidades por Operador
         </h2>
+
+        <!-- FILTROS DE LA MATRIZ GENERAL -->
+        <form method="get" action="{% url 'personal:matriz_competencias' %}" class="matriz-filtros" role="search">
+            <input type="hidden" name="turno" value="{{ turno }}">
+            <div class="matriz-filtros__campo">
+                <label for="filtro-q" class="matriz-filtros__label">Buscar operador</label>
+                <input type="search" id="filtro-q" name="q" value="{{ consulta }}"
+                       autocomplete="off" placeholder="Nombre o número de empleado">
+            </div>
+            <div class="matriz-filtros__check">
+                <input type="checkbox" id="filtro-faltantes" name="faltantes" value="1"
+                       {% if solo_faltantes %}checked{% endif %}>
+                <label for="filtro-faltantes">Solo operadores con estaciones sin nivel</label>
+            </div>
+            <button type="submit" class="sg-cta">Filtrar</button>
+            <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--ghost">Limpiar</a>
+            <p class="matriz-filtros__resumen" role="status">Mostrando {{ mostrados }} de {{ total_operadores }} operadores</p>
+        </form>
+
+        {% if matriz %}
         <div class="matriz-card">
-            <div class="matriz-table-wrapper">
+            <div class="matriz-table-wrapper matriz-table-wrapper--scroll">
                 <table class="matriz-table">
                     <caption class="visually-hidden">
                         Matriz general de habilidades por operador y estación.
@@ -359,6 +455,9 @@
                 </table>
             </div>
         </div>
+        {% else %}
+            <div class="sg-empty">Ningún operador coincide con el filtro.</div>
+        {% endif %}
 
     {% endif %}
 </div>

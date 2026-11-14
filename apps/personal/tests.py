@@ -11,6 +11,8 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.calidad.models import Asignacion
+
 from . import services
 from .models import Empleado, Estacion, Linea, NivelHabilidad, Rol, SkillMatrix
 from .views import MAX_INTENTOS_FALLIDOS, MENSAJE_BLOQUEO
@@ -374,6 +376,110 @@ class MatrizSeguridadTests(TestCase):
         self.assertEqual(respuesta.status_code, 400)
         self.assertIn("nivel", respuesta.json()["error"])
         self.assertEqual(SkillMatrix.objects.count(), 0)
+
+
+class MatrizFiltrosTests(TestCase):
+    """Lote C: filtros de la matriz general y guardado con filtros activos."""
+
+    def setUp(self):
+        self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+        self.linea = Linea.objects.create(nombre="Línea 3")
+        self.corte = Estacion.objects.create(linea=self.linea, nombre="Corte", orden=1)
+        self.soldadura = Estacion.objects.create(
+            linea=self.linea, nombre="Soldadura", orden=2
+        )
+
+        self.jefe = crear_empleado(
+            numero_empleado="SG-0003",
+            nombre="Jefe L3",
+            rol=self.rol_jefe,
+            linea=self.linea,
+            activo=True,
+        )
+        self.ana = crear_empleado(
+            numero_empleado="SG-0101",
+            nombre="Ana López",
+            rol=self.rol_operador,
+            linea=self.linea,
+            activo=True,
+        )
+        self.bruno = crear_empleado(
+            numero_empleado="SG-0102",
+            nombre="Bruno Díaz",
+            rol=self.rol_operador,
+            linea=self.linea,
+            activo=True,
+        )
+        self.carla = crear_empleado(
+            numero_empleado="SG-0103",
+            nombre="Carla Ruiz",
+            rol=self.rol_operador,
+            linea=self.linea,
+            activo=True,
+        )
+
+        # Ana y Carla tienen nivel en todas las estaciones; a Bruno le falta una.
+        for estacion in (self.corte, self.soldadura):
+            SkillMatrix.objects.create(
+                empleado=self.ana, estacion=estacion, nivel=NivelHabilidad.EXPERTO
+            )
+            SkillMatrix.objects.create(
+                empleado=self.carla, estacion=estacion, nivel=NivelHabilidad.AUTONOMO
+            )
+        SkillMatrix.objects.create(
+            empleado=self.bruno,
+            estacion=self.corte,
+            nivel=NivelHabilidad.PRINCIPIANTE,
+        )
+
+        sesion = self.client.session
+        sesion["empleado_id"] = self.jefe.id
+        sesion.save()
+
+        self.url = reverse("personal:matriz_competencias")
+
+    def _nombres_mostrados(self, respuesta):
+        return [fila["empleado"].nombre for fila in respuesta.context["matriz"]]
+
+    def test_filtro_q_busca_por_nombre(self):
+        respuesta = self.client.get(self.url, {"q": "ANA"})
+
+        self.assertEqual(self._nombres_mostrados(respuesta), ["Ana López"])
+
+    def test_filtro_q_busca_por_numero_empleado(self):
+        respuesta = self.client.get(self.url, {"q": "sg-0102"})
+
+        self.assertEqual(self._nombres_mostrados(respuesta), ["Bruno Díaz"])
+
+    def test_filtro_faltantes_solo_operadores_con_estacion_sin_nivel(self):
+        respuesta = self.client.get(self.url, {"faltantes": "1"})
+
+        self.assertEqual(self._nombres_mostrados(respuesta), ["Bruno Díaz"])
+
+    def test_resumen_muestra_el_total_sin_filtrar(self):
+        respuesta = self.client.get(self.url, {"q": "Bruno"})
+
+        self.assertContains(respuesta, "Mostrando 1 de 3 operadores")
+
+    def test_guardar_asignacion_con_filtros_activos_guarda_todas_las_estaciones(self):
+        respuesta = self.client.post(
+            f"{self.url}?q=ana&faltantes=1&turno=2",
+            {
+                "guardar_asignacion": "1",
+                "turno": "2",
+                f"estacion_{self.corte.id}": str(self.ana.id),
+                f"estacion_{self.soldadura.id}": str(self.bruno.id),
+            },
+        )
+
+        self.assertEqual(respuesta.status_code, 302)
+        asignaciones = Asignacion.objects.filter(turno=2)
+        self.assertEqual(asignaciones.count(), 2)
+        self.assertSetEqual(
+            set(asignaciones.values_list("estacion_id", flat=True)),
+            {self.corte.id, self.soldadura.id},
+        )
 
 
 class PinHasheadoTests(TestCase):
