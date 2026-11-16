@@ -26,6 +26,26 @@ def base_planta():
     return {"est": est, "op_limpio": op_limpio, "op_defecto": op_defecto}
 
 
+def crear_elegible(base_planta, indice, aceptadas=50):
+    """Crea un operador con producción sin rechazos para probar la paginación."""
+    operador = Empleado.objects.create(
+        numero_empleado=f"OP-P{indice:02d}",
+        nombre=f"Elegible {indice:02d}",
+        rol=base_planta["op_limpio"].rol,
+        linea=base_planta["est"].linea,
+    )
+    asignacion = Asignacion.objects.create(
+        empleado=operador, estacion=base_planta["est"], turno=1
+    )
+    RegistroCalidadHorario.objects.create(
+        asignacion=asignacion,
+        hora=1,
+        piezas_aceptadas=aceptadas,
+        piezas_rechazadas=0,
+    )
+    return operador
+
+
 def test_operador_sin_defectos_aparece_y_con_defecto_se_excluye(base_planta):
     a1 = Asignacion.objects.create(
         empleado=base_planta["op_limpio"], estacion=base_planta["est"], turno=1
@@ -79,6 +99,115 @@ def test_periodo_configurable_recalcula_sin_tocar_codigo(base_planta):
 
     ConfiguracionBono.objects.update(dias_evaluacion=15)
     assert calcular_elegibles_bono()["elegibles"] == []
+
+
+def test_periodo_trae_etiqueta_legible_sin_cambiar_el_tipo(base_planta):
+    """B-14: la pantalla usa una etiqueta corta; el enum interno sigue intacto."""
+    periodo = calcular_elegibles_bono()["periodo"]
+    assert periodo["etiqueta"] == "ventana móvil"
+    assert periodo["tipo"] == "Últimos N días (ventana móvil)"
+
+    hoy = date.today()
+    ConfiguracionBono.objects.create(
+        tipo_periodo="rango",
+        fecha_inicio=hoy - timedelta(days=3),
+        fecha_fin=hoy,
+        activo=True,
+    )
+    periodo = calcular_elegibles_bono()["periodo"]
+    assert periodo["etiqueta"] == "rango fijo"
+    assert periodo["tipo"] == "Rango de fechas específico"
+
+
+def test_la_lista_de_elegibles_se_pagina_de_diez_en_diez(client, entrar, base_planta):
+    """RNF-4: 23 elegibles se reparten en 10 + 10 + 3 y la tarjeta conserva el total."""
+    for indice in range(1, 24):
+        crear_elegible(base_planta, indice)
+    entrar("gerente")
+
+    primera = client.get("/dashboard/gerente/")
+    assert primera.status_code == 200
+    html_primera = primera.content.decode()
+    assert html_primera.count("data-elegible") == 10
+    assert "Página 1 de 3" in html_primera
+    assert "Total de elegibles: 23" in html_primera
+    assert "Siguiente" in html_primera
+    assert primera.context["pagina_elegibles"].paginator.count == 23
+
+    ultima = client.get("/dashboard/gerente/?pagina=3")
+    assert ultima.status_code == 200
+    html_ultima = ultima.content.decode()
+    assert html_ultima.count("data-elegible") == 3
+    assert "Página 3 de 3" in html_ultima
+    assert "Anterior" in html_ultima
+
+
+def test_la_paginacion_muestra_el_rango_real_de_cada_pagina(client, entrar, base_planta):
+    """«Mostrando 1–10 de 23» cambia a 21–23 en la última página."""
+    for indice in range(1, 24):
+        crear_elegible(base_planta, indice)
+    entrar("gerente")
+
+    primera = client.get("/dashboard/gerente/").content.decode()
+    assert "Mostrando 1–10 de 23" in primera
+
+    ultima = client.get("/dashboard/gerente/?pagina=3").content.decode()
+    assert "Mostrando 21–23 de 23" in ultima
+
+
+def test_la_tabla_de_bonos_muestra_la_tasa_real_de_defectos(
+    client, entrar, base_planta, monkeypatch
+):
+    """La columna «Defectos» no puede quedar fija en «0 (0.0 %)».
+
+    La regla actual solo hace elegibles a quienes no tienen rechazadas, así que
+    se simula la salida de ``bonos.py`` con una fila con defectos para verificar
+    que la plantilla usa ``rechazadas`` y ``tasa_defectos``.
+    """
+    bono_con_defectos = {
+        "periodo": {
+            "inicio": date(2026, 1, 1),
+            "fin": date(2026, 1, 7),
+            "tipo": "Últimos N días (ventana móvil)",
+            "etiqueta": "ventana móvil",
+        },
+        "elegibles": [
+            {
+                "empleado_id": base_planta["op_defecto"].id,
+                "numero_empleado": "OP-02",
+                "nombre": "Mario Rechazo",
+                "aceptadas": 40,
+                "rechazadas": 7,
+                "retrabajo": 3,
+                "total_piezas": 50,
+                "total_registros": 1,
+                "fpy": 80.0,
+                "tasa_defectos": 14.0,
+                "registros": [],
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        "apps.dashboard.views.calcular_elegibles_bono", lambda: bono_con_defectos
+    )
+    entrar("gerente")
+
+    html = client.get("/dashboard/gerente/").content.decode()
+
+    assert "Mario Rechazo" in html
+    assert "7 (14.0 %)" in html
+    assert "sg-badge--neutral" in html
+    assert "0 (0.0 %)" not in html
+
+
+def test_el_tablero_gerencial_muestra_la_etiqueta_del_periodo(client, entrar, base_planta):
+    crear_elegible(base_planta, 1)
+    entrar("gerente")
+
+    html = client.get("/dashboard/gerente/").content.decode()
+
+    assert "(ventana móvil)" in html
+    assert "Últimos N días" not in html
 
 
 def test_gerente_consulta_lista_y_detalle_de_elegible(client, entrar, base_planta):

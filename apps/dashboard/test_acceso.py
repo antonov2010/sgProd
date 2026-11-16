@@ -41,6 +41,18 @@ def test_un_rol_no_entra_a_la_pantalla_de_otro(client, entrar, rol, ajena):
     assert client.get(reverse(PANTALLAS[ajena])).status_code == 403
 
 
+def test_el_403_usa_la_pagina_propia_con_lenguaje_del_sitio(client, entrar):
+    """B-14: el rol equivocado ve una página 403 navegable, no la cruda de Django."""
+    entrar("operador")
+    respuesta = client.get(reverse(PANTALLAS["gerente"]))
+
+    assert respuesta.status_code == 403
+    html = respuesta.content.decode()
+    assert "No tienes acceso a esta pantalla" in html
+    assert "Volver al inicio" in html
+    assert "Cerrar sesión" in html
+
+
 def test_el_operador_no_ve_los_datos_del_gerente(client, entrar):
     entrar("operador")
     respuesta = client.get(reverse(PANTALLAS["gerente"]))
@@ -67,8 +79,8 @@ def test_una_sesion_con_empleado_inexistente_redirige(client, db):
 
 def test_el_login_de_gerente_lleva_a_su_tablero(client, entrar):
     gerente = entrar("gerente")
-    gerente.pin = "123456"
-    gerente.save()
+    gerente.set_pin("123456")
+    gerente.save(update_fields=["pin_hash"])
     sesion = client.session
     sesion.flush()
     respuesta = client.post(

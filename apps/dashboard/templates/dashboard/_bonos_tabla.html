@@ -1,0 +1,76 @@
+{% comment %}
+   Bloque paginado de elegibles a bono.
+   Se incluye desde gerente.html y también se devuelve solo cuando la pantalla
+   pide la página por fetch (?fragmento=bonos). Conserva siempre el mismo id.
+{% endcomment %}
+<div id="bonos-tabla" class="sg-bonos__bloque" tabindex="-1"
+     data-pagina="{{ pagina_elegibles.number }}"
+     data-total-paginas="{{ pagina_elegibles.paginator.num_pages }}">
+  {% if bono.elegibles %}
+    <div class="sg-scroll sg-bonos__scroll">
+      <table class="sg-table sg-table--compact">
+        <caption class="visually-hidden">
+          Elegibles a bono del periodo: {{ bono.periodo.inicio }} al {{ bono.periodo.fin }}
+          ({{ bono.periodo.etiqueta }}).
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">No. Emp.</th>
+            <th scope="col">Operador</th>
+            <th scope="col" class="sg-num">Aceptadas</th>
+            <th scope="col" class="sg-num">Defectos</th>
+            <th scope="col" class="sg-num">FPY</th>
+            <th scope="col" class="sg-num">Evidencia</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for op in pagina_elegibles %}
+          <tr data-elegible>
+            <td>{{ op.numero_empleado }}</td>
+            <td><strong>{{ op.nombre }}</strong></td>
+            <td class="sg-num">{{ op.aceptadas }}</td>
+            <td class="sg-num">
+              {% if op.rechazadas %}
+                <span class="sg-badge sg-badge--neutral">{{ op.rechazadas }} ({{ op.tasa_defectos|default_if_none:0|floatformat:1 }} %)</span>
+              {% else %}
+                <span class="sg-badge sg-badge--ok">{{ op.rechazadas }} ({{ op.tasa_defectos|default_if_none:0|floatformat:1 }} %)</span>
+              {% endif %}
+            </td>
+            <td class="sg-num">{{ op.fpy }} %</td>
+            <td class="sg-num">
+              <a href="{% url 'dashboard:detalle_elegible_bono' op.empleado_id %}" class="sg-small sg-link-touch">
+                Ver detalle ({{ op.total_registros }})
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="sg-bonos__paginador" aria-label="Paginación de elegibles" data-paginador>
+      {% if pagina_elegibles.has_previous %}
+        <a class="sg-btn sg-btn--ghost sg-small"
+           href="?pagina={{ pagina_elegibles.previous_page_number }}#reconocimiento"
+           data-pagina="{{ pagina_elegibles.previous_page_number }}" rel="prev">Anterior</a>
+      {% else %}
+        <span class="sg-btn sg-btn--ghost sg-small" aria-disabled="true">Anterior</span>
+      {% endif %}
+
+      <p class="sg-muted sg-small sg-bonos__estado">
+        <span data-bonos-resumen aria-live="polite" aria-atomic="true">Página {{ pagina_elegibles.number }} de {{ pagina_elegibles.paginator.num_pages }}, {{ pagina_elegibles|length }} elegibles</span>
+        <span class="sg-bonos__rango">Mostrando {{ rango_pagina.desde }}–{{ rango_pagina.hasta }} de {{ rango_pagina.total }}</span>
+      </p>
+
+      {% if pagina_elegibles.has_next %}
+        <a class="sg-btn sg-btn--ghost sg-small"
+           href="?pagina={{ pagina_elegibles.next_page_number }}#reconocimiento"
+           data-pagina="{{ pagina_elegibles.next_page_number }}" rel="next">Siguiente</a>
+      {% else %}
+        <span class="sg-btn sg-btn--ghost sg-small" aria-disabled="true">Siguiente</span>
+      {% endif %}
+    </nav>
+  {% else %}
+    <div class="sg-empty">No hay operadores elegibles a bono por cero defectos en el periodo evaluado.</div>
+  {% endif %}
+</div>

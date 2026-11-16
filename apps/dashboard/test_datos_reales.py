@@ -39,8 +39,9 @@ def test_registros_reales_tienen_la_forma_esperada_y_van_ordenados(escenario):
     regs = registros_reales()
     assert [r["hora"] for r in regs] == ["Hora 1", "Hora 2"]
     assert regs[0] == {
-        "linea": "Línea 3", "estacion": "Soldadura", "empleado": "Luis Operador",
-        "hora": "Hora 1", "aceptadas": 40, "rechazadas": 0, "retrabajo": 0, "meta": 40,
+        "linea": "Línea 3", "estacion": "Soldadura", "turno": "Turno 1",
+        "empleado": "Luis Operador", "hora": "Hora 1", "aceptadas": 40,
+        "rechazadas": 0, "retrabajo": 0, "meta": 40,
     }
 
 
@@ -61,6 +62,32 @@ def test_el_tablero_se_arma_con_datos_reales(escenario):
     assert t["empleados"][0]["nombre"] == "Luis Operador"
 
 
+def test_el_desglose_por_turno_trae_las_claves_de_turno(escenario):
+    """B-08: sin la clave ``turno`` el tablero dejaba ``por_turno`` vacío."""
+    tablero = construir_tablero(registros_reales(), personal_real())
+    assert set(tablero["por_turno"]) == {"Turno 1"}
+    # 78 aceptadas de 80 piezas: FPY 97.5 % y 1.2 % de defectos.
+    assert tablero["por_turno"]["Turno 1"]["fpy"] == 97.5
+    assert tablero["por_turno"]["Turno 1"]["tasa_defectos"] == 1.2
+
+
+def test_la_pantalla_del_gerente_muestra_la_seccion_por_turno(
+    client, escenario, entrar
+):
+    entrar("gerente")
+    html = client.get("/dashboard/gerente/").content.decode()
+    assert "Por turno" in html
+    assert "Turno 1" in html
+    assert 'aria-label="Indicadores de FPY y tasa de defectos por turno"' in html
+
+
+def test_sin_captura_la_seccion_por_turno_no_se_dibuja(client, entrar):
+    entrar("gerente")
+    respuesta = client.get("/dashboard/gerente/")
+    assert respuesta.context["tablero"]["por_turno"] == {}
+    assert "Por turno" not in respuesta.content.decode()
+
+
 def test_la_pantalla_usa_ejemplo_si_no_hay_captura(client, entrar):
     entrar("gerente")
     r = client.get("/dashboard/gerente/")
@@ -76,13 +103,14 @@ def test_la_pantalla_usa_datos_reales_si_hay_captura(client, escenario, entrar):
     assert "Datos reales" in r.content.decode()
 
 
-def test_personal_real_toma_operadores_de_la_matriz_si_no_tienen_linea(escenario):
+def test_personal_real_solo_cuenta_operadores_de_su_linea(escenario):
+    """Ubicar al personal sale de Empleado.linea; la matriz no infla el conteo."""
     rol_op = Rol.objects.get(tipo_rol="operador")
     sin_linea = Empleado.objects.create(numero_empleado="O3", nombre="Sofia Matriz", rol=rol_op)
     SkillMatrix.objects.create(
         empleado=sin_linea, estacion=Estacion.objects.get(nombre="Soldadura"), nivel="Experto"
     )
-    assert personal_real()["Línea 3"]["operadores"] == ["Luis Operador", "Sofia Matriz"]
+    assert personal_real()["Línea 3"]["operadores"] == ["Luis Operador"]
 
 
 def test_personal_real_sin_jefe_de_linea_no_falla(escenario):

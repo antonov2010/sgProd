@@ -10,7 +10,7 @@ Modelos que usa (solo lectura, no se toca ninguno):
 """
 
 from apps.calidad.models import RegistroCalidadHorario
-from apps.personal.models import Empleado, Linea, SkillMatrix
+from apps.personal.models import Empleado, Linea
 
 META_POR_DEFECTO = 100  # igual que MetaEstacion.piezas_por_hora_meta
 
@@ -23,7 +23,7 @@ def registros_reales(fecha=None):
     """Registros hora por hora de UN día (por defecto el más reciente).
 
     Devuelve [] si todavía no hay captura. Cada registro:
-    linea, estacion, empleado, hora, aceptadas, rechazadas, retrabajo, meta.
+    linea, estacion, turno, empleado, hora, aceptadas, rechazadas, retrabajo, meta.
     """
     base = RegistroCalidadHorario.objects.all()
     if fecha is None:
@@ -48,6 +48,8 @@ def registros_reales(fecha=None):
             {
                 "linea": estacion.linea.nombre,
                 "estacion": estacion.nombre,
+                # B-08: sin el turno, el desglose por turno del tablero sale vacío.
+                "turno": f"Turno {r.asignacion.turno}",
                 "empleado": r.asignacion.empleado.nombre,
                 "hora": _etiqueta_hora(r.hora),
                 "aceptadas": r.piezas_aceptadas,
@@ -62,21 +64,16 @@ def registros_reales(fecha=None):
 def personal_real():
     """{línea: {"jefe": nombre, "operadores": [nombres]}} con gente activa.
 
-    Operadores de una línea = los que tienen esa línea asignada, más los que
-    figuran en la matriz de habilidades de alguna de sus estaciones (el seed
-    actual solo llena la matriz). El Jefe sale de Linea.jefe_linea o, si no
-    hay, de un empleado con rol jefe que tenga esa línea.
+    Una sola fuente para ubicar al personal: ``Empleado.linea`` (el Jefe sale de
+    ``Linea.jefe_linea``). No se cruzan habilidades de otras líneas: eso inflaba
+    el conteo de «En línea».
     """
     personal = {}
     for linea in Linea.objects.select_related("jefe_linea").order_by("nombre"):
-        por_linea = Empleado.objects.filter(linea=linea)
-        por_matriz = Empleado.objects.filter(
-            id__in=SkillMatrix.objects.filter(estacion__linea=linea).values("empleado_id")
-        )
         operadores = (
-            (por_linea | por_matriz)
-            .filter(activo=True, rol__tipo_rol="operador")
-            .distinct()
+            Empleado.objects.filter(
+                linea=linea, activo=True, rol__tipo_rol="operador"
+            )
             .order_by("nombre")
             .values_list("nombre", flat=True)
         )

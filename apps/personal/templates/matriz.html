@@ -3,7 +3,7 @@
 {% block title %}Matriz de Competencias · SG-Prod{% endblock %}
 
 {% block nav_links %}
-  <span style="color: white; font-weight: 500; margin-right: 15px;">
+  <span class="sg-nav-user">
     {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
   </span>
   <a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
@@ -24,17 +24,32 @@
         width: 100%;
     }
     .matriz-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: var(--sg-card);
+        border: 1px solid var(--sg-line);
         border-radius: 12px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         overflow: hidden;
         width: 100%;
         margin-bottom: 2rem;
     }
+    .matriz-card--accent { border: 2px solid var(--sg-primary); }
+    .matriz-card--proposal {
+        border: 2px dashed var(--sg-level-experto-fg);
+        background: var(--sg-level-experto-bg);
+    }
+    .matriz-card__head {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--sg-line);
+    }
     .matriz-table-wrapper {
         width: 100%;
         overflow-x: auto;
+    }
+    /* Solo la tabla general es larga: con altura máxima el thead queda fijo
+       mientras se recorren los operadores en tableta. */
+    .matriz-table-wrapper--scroll {
+        max-height: 75vh;
+        overflow: auto;
     }
     .matriz-table {
         width: 100%;
@@ -44,64 +59,184 @@
         font-size: 0.875rem;
     }
     .matriz-table th {
-        background-color: #0d5c75;
-        color: #ffffff;
+        background-color: var(--sg-primary);
+        color: var(--sg-on-solid);
         font-weight: 600;
         text-align: center;
         padding: 12px 10px;
-        border-bottom: 2px solid #094153;
+        border-bottom: 2px solid var(--sg-teal-dark);
         white-space: nowrap;
+    }
+    .matriz-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+    }
+    .matriz-table thead th.col-empleado {
+        z-index: 5;
     }
     .matriz-table th.col-empleado {
         text-align: left;
         position: sticky;
         left: 0;
         z-index: 3;
-        background-color: #0d5c75;
+        background-color: var(--sg-primary);
         min-width: 180px;
         padding-left: 16px;
     }
     .matriz-table td {
         padding: 10px 8px;
-        border-bottom: 1px solid #edf2f7;
+        border-bottom: 1px solid var(--sg-line-soft);
         text-align: center;
         vertical-align: middle;
-        background-color: #ffffff;
+        background-color: var(--sg-card);
     }
     .matriz-table tr:nth-child(even) td {
-        background-color: #f8fafc;
+        background-color: var(--sg-row-alt);
     }
     .matriz-table tr:hover td {
-        background-color: #f1f5f9;
+        background-color: var(--sg-row-hover);
     }
-    .matriz-table td.cell-empleado {
+    .matriz-table td.cell-empleado,
+    .matriz-table th.cell-empleado {
         text-align: left;
         font-weight: 600;
-        color: #1e293b;
+        color: var(--sg-ink);
         position: sticky;
         left: 0;
         z-index: 2;
-        border-right: 2px solid #e2e8f0;
+        border-right: 2px solid var(--sg-line);
+        border-bottom: 1px solid var(--sg-line-soft);
         padding-left: 16px;
         white-space: nowrap;
+        background-color: var(--sg-card);
+    }
+    .matriz-table tr:nth-child(even) th.cell-empleado {
+        background-color: var(--sg-row-alt);
+    }
+    .matriz-table tr:hover th.cell-empleado {
+        background-color: var(--sg-row-hover);
     }
 
     .sg-select-nivel {
         display: inline-block;
-        padding: 4px 8px;
-        font-size: 0.78rem;
+        min-height: 44px;
+        max-width: 100%;
+        padding: 6px 10px;
+        font-family: var(--sg-font-body);
+        font-size: 0.9rem;
         font-weight: 600;
         border-radius: 16px;
         text-align: center;
         white-space: nowrap;
         cursor: pointer;
-        outline: none;
     }
-    .sg-badge-instructor { background-color: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-weight: 700; }
-    .sg-badge-experto { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
-    .sg-badge-autonomo { background-color: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
-    .sg-badge-principiante { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .sg-badge-sinnivel { background-color: #ffffff; color: #94a3b8; border: 1px dashed #cbd5e1; font-style: italic; }
+    .sg-select-nivel:focus-visible {
+        outline: 3px solid var(--sg-thread);
+        outline-offset: 2px;
+    }
+    .matriz-estado { margin: 0 0 0.75rem; min-height: 1.4em; font-size: 0.9rem; color: var(--sg-bad-fg); }
+    .matriz-estado:empty { display: none; }
+
+    /* Barra de filtros de la matriz general (tamaño táctil en tableta). */
+    .matriz-filtros {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 0.75rem 1rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        background: var(--sg-card);
+        border: 1px solid var(--sg-line);
+        border-radius: 12px;
+    }
+    .matriz-filtros__campo {
+        display: flex;
+        flex: 1 1 260px;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+    .matriz-filtros__label {
+        font: 600 0.9rem var(--sg-font-head);
+        color: var(--sg-muted);
+    }
+    .matriz-filtros input[type="search"] {
+        width: 100%;
+        min-height: 44px;
+        padding: 0 0.8rem;
+        border: 2px solid var(--sg-line);
+        border-radius: 8px;
+        background: var(--sg-card);
+        color: var(--sg-ink);
+        font: 400 1rem var(--sg-font-body);
+    }
+    .matriz-filtros input[type="search"]:focus-visible {
+        outline: 3px solid var(--sg-thread);
+        outline-offset: 1px;
+    }
+    .matriz-filtros__check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+    }
+    .matriz-filtros__check input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--sg-primary);
+    }
+    .matriz-filtros__check label {
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .matriz-filtros .sg-cta { min-height: 44px; }
+    .matriz-filtros__resumen {
+        flex-basis: 100%;
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--sg-muted);
+    }
+
+    /* Pestañas: separan la asignación vigente de la matriz general. */
+    .matriz-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin: 0 0 1rem;
+        border-bottom: 2px solid var(--sg-line);
+    }
+    .matriz-tabs__tab {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        border: 1px solid transparent;
+        border-bottom: 3px solid transparent;
+        border-radius: 8px 8px 0 0;
+        color: var(--sg-muted);
+        font: 600 0.95rem var(--sg-font-head);
+        text-decoration: none;
+    }
+    .matriz-tabs__tab:hover {
+        color: var(--sg-ink);
+        background: var(--sg-row-hover);
+    }
+    .matriz-tabs__tab[aria-selected="true"] {
+        color: var(--sg-primary);
+        border-color: var(--sg-line);
+        border-bottom-color: var(--sg-primary);
+        background: var(--sg-card);
+    }
+    .matriz-tabs__tab:focus-visible {
+        outline: 3px solid var(--sg-thread);
+        outline-offset: 2px;
+    }
+    .matriz-panel__nota {
+        margin: 0 0 1rem;
+        font-size: 0.9rem;
+        color: var(--sg-muted);
+    }
 </style>
 
 <div class="matriz-container">
@@ -113,12 +248,12 @@
         </div>
         
         <div style="display: flex; gap: 10px; align-items: center;">
-            <a href="?sugerir=1" style="background-color: #0d5c75; color: #ffffff; border: 1px solid #0d5c75; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                ⚡ Ajustes de distribución de línea
+            <a href="?sugerir=1&turno={{ turno }}{% if consulta %}&q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&faltantes=1{% endif %}" class="sg-cta">
+                <span aria-hidden="true">⚡</span> Ajustes de distribución de línea
             </a>
 
-            <a href="{% url 'dashboard:pantalla_jefe' %}" style="background-color: #ffffff; color: #0d5c75; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
-                ← Volver al Tablero
+            <a href="{% url 'dashboard:pantalla_jefe' %}" class="sg-cta sg-cta--ghost">
+                <span aria-hidden="true">←</span> Volver al Tablero
             </a>
         </div>
     </header>
@@ -127,144 +262,82 @@
         <div class="sg-empty">No hay información de línea asignada para este usuario.</div>
     {% else %}
 
-        <!-- TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA -->
-        <div class="matriz-card" style="border: 2px solid #0d5c75;">
-            <div style="padding: 1rem 1.25rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                <h2 style="margin: 0; color: #0d5c75; font-size: 1.1rem; font-weight: 700;">
-                    📌 Asignación Vigente de la Línea (Turno Actual)
-                </h2>
-                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;">
-                    Estado oficial estático de los operadores asignados a cada estación de trabajo.
-                </p>
-            </div>
-            <div class="matriz-table-wrapper">
-                <table class="matriz-table">
-                    <thead>
-                        <tr>
-                            <th class="col-empleado">Estación de Trabajo</th>
-                            {% for item in tabla_vigente_estatica %}
-                                <th>{{ item.estacion.nombre }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="cell-empleado" style="background-color: #e0f2fe; color: #075985;">
-                                <strong>Operador Vigente</strong>
-                            </td>
-                            {% for item in tabla_vigente_estatica %}
-                                <td style="{% if item.es_principiante %}background-color: #fffbeb; border: 2px solid #f59e0b;{% endif %}">
-                                    {% if item.empleado_asignado %}
-                                        <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">
-                                            {{ item.empleado_asignado.nombre }} {{ item.empleado_asignado.apellido }}
-                                        </div>
-                                        
-                                        {% if item.es_principiante %}
-                                            <div style="margin-top: 6px; padding: 4px 6px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 0.75rem; color: #92400e; font-weight: 700;">
-                                                {% if item.nivel == 'Principiante' %}
-                                                    ⚠️ Alerta: Principiante
-                                                {% else %}
-                                                    ⚠️ Sin Nivel Asignado
-                                                {% endif %}
-                                            </div>
-                                            {% if item.instructor_apoyo %}
-                                                <div style="margin-top: 4px; font-size: 0.72rem; color: #1e3a8a;">
-                                                    👨‍🏫 <strong>Instructor sugerido:</strong><br>
-                                                    {{ item.instructor_apoyo.nombre }} {{ item.instructor_apoyo.apellido }}
-                                                </div>
-                                            {% else %}
-                                                <div style="margin-top: 4px; font-size: 0.72rem; color: #dc2626; font-style: italic;">
-                                                    ⚠️ Sin instructor disponible
-                                                </div>
-                                            {% endif %}
-                                        {% else %}
-                                            <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">
-                                                ({{ item.nivel|default:"Sin nivel" }})
-                                            </span>
-                                        {% endif %}
+        <p id="matriz-estado" class="matriz-estado" role="status" aria-live="polite"></p>
 
-                                    {% else %}
-                                        <span style="color: #dc2626; font-weight: 700; font-size: 0.85rem;">
-                                            ⚠️ Descubierta
-                                        </span>
-                                    {% endif %}
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TABLA 2: PROPUESTA SUGERIDA EDITABLE -->
+        <!-- TABLA 2: PROPUESTA SUGERIDA EDITABLE (fuera de las pestañas) -->
         {% if sugerencia_propuesta %}
-        <form method="POST" class="matriz-card" style="border: 2px dashed #166534; background-color: #f0fdf4;">
+        <form method="POST" class="matriz-card matriz-card--proposal">
             {% csrf_token %}
             <input type="hidden" name="guardar_asignacion" value="1">
+            <input type="hidden" name="turno" value="{{ turno }}">
             
-            <div style="padding: 1rem 1.25rem; border-bottom: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--sg-level-experto-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
-                    <h2 style="margin: 0; color: #166534; font-size: 1.1rem; font-weight: 700;">
-                        ⚡ Propuesta de Distribución Sugerida (RF-1.3)
+                    <h2 style="margin: 0; color: var(--sg-level-experto-fg); font-size: 1.1rem; font-weight: 700;">
+                        <span aria-hidden="true">⚡</span> Propuesta de Distribución Sugerida (RF-1.3)
                     </h2>
-                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #15803d;">
+                    <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--sg-level-experto-fg);">
                         Revisa la recomendación o ajusta manualmente los operadores antes de guardar.
                     </p>
                 </div>
 
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <a href="{% url 'personal:matriz_competencias' %}" style="background-color: #ffffff; color: #dc2626; border: 1px solid #fca5a5; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 0.875rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;">
-                        ✕ Cancelar sin guardar
+                    <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--danger">
+                        <span aria-hidden="true">✕</span> Cancelar sin guardar
                     </a>
 
-                    <button type="submit" style="background-color: #166534; color: #ffffff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        ✓ Confirmar asignación
+                    <button type="submit" class="sg-cta sg-cta--ok">
+                        <span aria-hidden="true">✓</span> Confirmar asignación
                     </button>
                 </div>
             </div>
 
             <div class="matriz-table-wrapper">
                 <table class="matriz-table">
+                    <caption class="visually-hidden">
+                        Propuesta de distribución sugerida de operadores por estación.
+                    </caption>
                     <thead>
                         <tr>
-                            <th class="col-empleado" style="background-color: #166534;">Sugerencia RF-1.3</th>
+                            <th scope="col" class="col-empleado" style="background-color: var(--sg-action-ok-bg);">Sugerencia RF-1.3</th>
                             {% for item in sugerencia_propuesta.asignaciones %}
-                                <th style="background-color: #166534;">{{ item.estacion.nombre }}</th>
+                                <th scope="col" style="background-color: var(--sg-action-ok-bg);">{{ item.estacion.nombre }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="cell-empleado" style="background-color: #dcfce7; color: #166534;">
+                            <th scope="row" class="cell-empleado" style="background-color: var(--sg-level-experto-bg); color: var(--sg-level-experto-fg);">
                                 <strong>Operador Propuesto</strong>
-                            </td>
+                            </th>
                             {% for item in sugerencia_propuesta.asignaciones %}
-                                <td style="background-color: #ffffff; {% if item.es_principiante %}border: 2px solid #f59e0b; background-color: #fffbeb;{% endif %}">
-                                    <select name="estacion_{{ item.estacion.id }}" 
+                                <td style="background-color: var(--sg-card); {% if item.es_principiante %}border: 2px solid var(--sg-gap-border); background-color: var(--sg-gap-bg);{% endif %}">
+                                    <select name="estacion_{{ item.estacion.id }}"
+                                            aria-label="Operador propuesto para {{ item.estacion.nombre }}"
                                             onchange="verificarPrincipianteSugerencia(this)"
-                                            style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #166534; font-size: 0.85rem; font-weight: 600; color: #0f172a;">
+                                            style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--sg-level-experto-fg); font-size: 0.85rem; font-weight: 600; color: var(--sg-ink); background-color: var(--sg-card);">
                                         <option value="" {% if item.descubierta %}selected{% endif %}>
-                                            -- ⚠️ Descubierta --
+                                            -- Descubierta --
                                         </option>
                                         {% for op in todos_los_operadores %}
                                             <option value="{{ op.id }}" {% if item.empleado and item.empleado.id == op.id %}selected{% endif %}>
-                                                {{ op.nombre }} {{ op.apellido }} {% if item.empleado and item.empleado.id == op.id %}(Sugerido){% endif %}
+                                                {{ op.nombre }} {% if item.empleado and item.empleado.id == op.id %}(Sugerido){% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
 
                                     <div class="alerta-principiante-container">
-                                        {% if item.es_principiante %}
-                                            <div style="margin-top: 6px; padding: 3px 6px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 0.73rem; color: #92400e; font-weight: 700;">
+                                        {% if item.empleado and item.es_principiante %}
+                                            <div style="margin-top: 6px; padding: 3px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.73rem; color: var(--sg-level-principiante-fg); font-weight: 700;">
                                                 {% if item.nivel == 'Principiante' %}
-                                                    ⚠️ Operador Principiante
+                                                    <span aria-hidden="true">⚠️</span> Operador Principiante
                                                 {% else %}
-                                                    ⚠️ Sin Nivel Asignado
+                                                    <span aria-hidden="true">⚠️</span> Sin Nivel Asignado
                                                 {% endif %}
                                             </div>
                                             {% if item.instructor_apoyo %}
-                                                <div style="margin-top: 3px; font-size: 0.72rem; color: #1e3a8a;">
-                                                    👨‍🏫 Apoyo: {{ item.instructor_apoyo.nombre }} {{ item.instructor_apoyo.apellido }}
+                                                <div style="margin-top: 3px; font-size: 0.72rem; color: var(--sg-link);">
+                                                    <span aria-hidden="true">👨‍🏫</span> Apoyo: {{ item.instructor_apoyo.nombre }}
                                                 </div>
                                             {% endif %}
                                         {% endif %}
@@ -278,41 +351,91 @@
         </form>
         {% endif %}
 
+        <!-- Pestañas: solo se pinta el panel activo, la otra tabla no viaja al DOM. -->
+        <nav class="matriz-tabs" role="tablist" aria-label="Vistas de la matriz de competencias">
+            <a id="tab-matriz" class="matriz-tabs__tab" role="tab"
+               href="{% url 'personal:matriz_competencias' %}?vista=matriz&amp;turno={{ turno }}{% if consulta %}&amp;q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&amp;faltantes=1{% endif %}"
+               aria-selected="{% if vista == 'matriz' %}true{% else %}false{% endif %}"
+               aria-controls="panel-matriz">
+                Matriz General de Habilidades
+            </a>
+            <a id="tab-asignacion" class="matriz-tabs__tab" role="tab"
+               href="{% url 'personal:matriz_competencias' %}?vista=asignacion&amp;turno={{ turno }}{% if consulta %}&amp;q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&amp;faltantes=1{% endif %}"
+               aria-selected="{% if vista == 'asignacion' %}true{% else %}false{% endif %}"
+               aria-controls="panel-asignacion">
+                Asignación Vigente de la Línea
+            </a>
+        </nav>
+
+        {% if vista == 'matriz' %}
+        <section id="panel-matriz" role="tabpanel" aria-labelledby="tab-matriz" tabindex="0">
         <!-- TABLA 3: MATRIZ GENERAL DE HABILIDADES POR OPERADOR -->
-        <h2 style="font-size: 1.1rem; color: #0d5c75; font-weight: 700; margin-bottom: 0.75rem;">
+        <h2 class="sg-heading-teal" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">
             Matriz General de Habilidades por Operador
         </h2>
-        <div class="matriz-card">
-            <div class="matriz-table-wrapper">
+
+        <!-- FILTROS DE LA MATRIZ GENERAL (solo aplican a este panel) -->
+        <form method="get" action="{% url 'personal:matriz_competencias' %}" class="matriz-filtros" role="search">
+            <input type="hidden" name="vista" value="matriz">
+            <input type="hidden" name="turno" value="{{ turno }}">
+            <div class="matriz-filtros__campo">
+                <label for="filtro-q" class="matriz-filtros__label">Buscar operador</label>
+                <input type="search" id="filtro-q" name="q" value="{{ consulta }}"
+                       autocomplete="off" placeholder="Nombre o número de empleado">
+            </div>
+            <div class="matriz-filtros__check">
+                <input type="checkbox" id="filtro-faltantes" name="faltantes" value="1"
+                       {% if solo_faltantes %}checked{% endif %}>
+                <label for="filtro-faltantes">Solo operadores con estaciones sin nivel</label>
+            </div>
+            <button type="submit" class="sg-cta">Filtrar</button>
+            <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--ghost">Limpiar</a>
+            <p id="matriz-resumen" class="matriz-filtros__resumen" role="status" aria-live="polite"
+               data-total="{{ total_operadores }}">Mostrando {{ mostrados }} de {{ total_operadores }} operadores</p>
+        </form>
+
+        <div class="matriz-card" id="matriz-tabla" {% if not matriz %}hidden{% endif %}>
+            <div class="matriz-table-wrapper matriz-table-wrapper--scroll">
                 <table class="matriz-table">
+                    <caption class="visually-hidden">
+                        Matriz general de habilidades por operador y estación.
+                    </caption>
                     <thead>
                         <tr>
-                            <th class="col-empleado">Empleado / Operador</th>
+                            <th scope="col" class="col-empleado">Empleado / Operador</th>
                             {% for est in estaciones %}
-                                <th>{{ est.nombre }}</th>
+                                <th scope="col">{{ est.nombre }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for fila in matriz %}
-                            <tr>
-                                <td class="cell-empleado">
-                                    <div style="font-size: 0.75rem; color: #64748b;">{{ fila.empleado.numero_empleado }}</div>
-                                    <div>{{ fila.empleado.nombre }} {{ fila.empleado.apellido }}</div>
-                                </td>
-                                {% for col in fila.niveles %}
-                                    <td>
-                                        <select class="sg-select-nivel {% if col.nivel == 'Instructor' %}sg-badge-instructor{% elif col.nivel == 'Experto' %}sg-badge-experto{% elif col.nivel == 'Autónomo' %}sg-badge-autonomo{% elif col.nivel == 'Principiante' %}sg-badge-principiante{% else %}sg-badge-sinnivel{% endif %}"
-                                                data-empleado-id="{{ fila.empleado.id }}"
-                                                data-estacion-id="{{ col.estacion_id }}"
-                                                onchange="actualizarNivel(this)">
-                                            <option value="" {% if not col.nivel %}selected{% endif %}>Sin nivel</option>
-                                            <option value="Principiante" {% if col.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
-                                            <option value="Autónomo" {% if col.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
-                                            <option value="Experto" {% if col.nivel == 'Experto' %}selected{% endif %}>Experto</option>
-                                            <option value="Instructor" {% if col.nivel == 'Instructor' %}selected{% endif %}>Instructor</option>
-                                        </select>
-                                    </td>
+                            <tr data-nombre="{{ fila.empleado.nombre }}"
+                                data-numero-empleado="{{ fila.empleado.numero_empleado }}">
+                                <th scope="row" class="cell-empleado">
+                                    <div style="font-size: 0.75rem; color: var(--sg-muted);">{{ fila.empleado.numero_empleado }}</div>
+                                    <div>{{ fila.empleado.nombre }}</div>
+                                </th>
+                                {% for est in estaciones %}
+                                    {% for col in fila.niveles %}
+                                        {% if col.estacion_id == est.id %}
+                                        <td>
+                                            <select class="sg-select-nivel sg-level {% if col.nivel == 'Instructor' %}sg-level--instructor{% elif col.nivel == 'Experto' %}sg-level--experto{% elif col.nivel == 'Autónomo' %}sg-level--autonomo{% elif col.nivel == 'Principiante' %}sg-level--principiante{% else %}sg-level--sinnivel{% endif %}"
+                                                    id="nivel-{{ fila.empleado.id }}-{{ est.id }}"
+                                                    aria-label="Nivel de {{ fila.empleado.nombre }} en {{ est.nombre }}"
+                                                    data-empleado-id="{{ fila.empleado.id }}"
+                                                    data-estacion-id="{{ col.estacion_id }}"
+                                                    data-valor-anterior="{{ col.nivel|default:'' }}"
+                                                    onchange="actualizarNivel(this)">
+                                                <option value="" {% if not col.nivel %}selected{% endif %}>Sin nivel</option>
+                                                <option value="Principiante" {% if col.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
+                                                <option value="Autónomo" {% if col.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
+                                                <option value="Experto" {% if col.nivel == 'Experto' %}selected{% endif %}>Experto</option>
+                                                <option value="Instructor" {% if col.nivel == 'Instructor' %}selected{% endif %}>Instructor</option>
+                                            </select>
+                                        </td>
+                                        {% endif %}
+                                    {% endfor %}
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -320,12 +443,159 @@
                 </table>
             </div>
         </div>
+        <div class="sg-empty" id="matriz-sin-resultados" {% if matriz %}hidden{% endif %}>
+            Ningún operador coincide con el filtro.
+        </div>
+        </section>
+        {% else %}
+        <section id="panel-asignacion" role="tabpanel" aria-labelledby="tab-asignacion" tabindex="0">
+            <p class="matriz-panel__nota">
+                La búsqueda y el filtro de faltantes aplican solo a la Matriz General de Habilidades.
+            </p>
+            <!-- TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA -->
+            <div class="matriz-card matriz-card--accent">
+                <div class="matriz-card__head sg-panel-soft">
+                    <h2 class="sg-heading-teal" style="margin: 0; font-size: 1.1rem; font-weight: 700;">
+                        <span aria-hidden="true">📌</span> Asignación Vigente de la Línea (Turno {{ turno }})
+                    </h2>
+                    <p class="sg-muted" style="margin: 4px 0 0 0; font-size: 0.85rem;">
+                        Estado oficial estático de los operadores asignados a cada estación de trabajo.
+                    </p>
+                </div>
+                <div class="matriz-table-wrapper">
+                    <table class="matriz-table">
+                        <caption class="visually-hidden">
+                            Asignación vigente de la línea en el turno {{ turno }}.
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="col-empleado">Estación de Trabajo</th>
+                                {% for item in tabla_vigente_estatica %}
+                                    <th scope="col">{{ item.estacion.nombre }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th scope="row" class="cell-empleado" style="background-color: var(--sg-level-autonomo-bg); color: var(--sg-level-autonomo-fg);">
+                                    <strong>Operador Vigente</strong>
+                                </th>
+                                {% for item in tabla_vigente_estatica %}
+                                    <td style="{% if item.es_principiante %}background-color: var(--sg-gap-bg); border: 2px solid var(--sg-gap-border);{% endif %}">
+                                        {% if item.empleado_asignado %}
+                                            <div style="font-weight: 700; color: var(--sg-ink); font-size: 0.9rem;">
+                                                {{ item.empleado_asignado.nombre }}
+                                            </div>
+
+                                            {% if item.es_principiante %}
+                                                <div style="margin-top: 6px; padding: 4px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.75rem; color: var(--sg-level-principiante-fg); font-weight: 700;">
+                                                    {% if item.nivel == 'Principiante' %}
+                                                        <span aria-hidden="true">⚠️</span> Alerta: Principiante
+                                                    {% else %}
+                                                        <span aria-hidden="true">⚠️</span> Sin Nivel Asignado
+                                                    {% endif %}
+                                                </div>
+                                                {% if item.instructor_apoyo %}
+                                                    <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-link);">
+                                                        <span aria-hidden="true">👨‍🏫</span> <strong>Instructor sugerido:</strong><br>
+                                                        {{ item.instructor_apoyo.nombre }}
+                                                    </div>
+                                                {% else %}
+                                                    <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-bad-fg); font-style: italic;">
+                                                        <span aria-hidden="true">⚠️</span> Sin instructor disponible
+                                                    </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <span style="font-size: 0.75rem; color: var(--sg-muted); font-weight: 500;">
+                                                    ({{ item.nivel|default:"Sin nivel" }})
+                                                </span>
+                                            {% endif %}
+
+                                        {% else %}
+                                            <span class="sg-gap" style="font-weight: 700; font-size: 0.85rem;">
+                                                <span aria-hidden="true">⚠️</span> Descubierta
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        {% endif %}
 
     {% endif %}
 </div>
 
+{{ mapa_niveles|json_script:"mapa-niveles" }}
+{{ instructores_apoyo|json_script:"instructores-apoyo" }}
 <script>
-const MAPA_NIVELES = JSON.parse('{{ mapa_niveles_json|safe }}');
+const MAPA_NIVELES = JSON.parse(document.getElementById('mapa-niveles').textContent);
+const INSTRUCTORES = JSON.parse(document.getElementById('instructores-apoyo').textContent);
+
+function mostrarEstadoMatriz(mensaje) {
+    const estado = document.getElementById('matriz-estado');
+    if (estado) estado.textContent = mensaje;
+}
+
+// Búsqueda en vivo: filtra en el cliente las filas ya renderizadas, sin
+// recargar ni quitar el foco del campo. A partir de 3 caracteres; con menos
+// se vuelven a mostrar todas las filas.
+const filtroMatriz = document.getElementById('filtro-q');
+const tablaMatriz = document.getElementById('matriz-tabla');
+const resumenMatriz = document.getElementById('matriz-resumen');
+const sinResultadosMatriz = document.getElementById('matriz-sin-resultados');
+let temporizadorFiltroMatriz = null;
+
+function normalizarTextoMatriz(texto) {
+    return (texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function aplicarFiltroMatriz() {
+    if (!tablaMatriz || !resumenMatriz) return;
+
+    const consulta = normalizarTextoMatriz(filtroMatriz ? filtroMatriz.value : '');
+    const filas = Array.from(tablaMatriz.querySelectorAll('tbody tr'));
+    const filtrando = consulta.length >= 3;
+    let visibles = 0;
+
+    filas.forEach((fila) => {
+        const nombre = normalizarTextoMatriz(fila.dataset.nombre);
+        const numero = normalizarTextoMatriz(fila.dataset.numeroEmpleado);
+        const coincide = !filtrando
+            || nombre.includes(consulta)
+            || numero.includes(consulta);
+        fila.hidden = !coincide;
+        if (coincide) visibles += 1;
+    });
+
+    const total = Number(resumenMatriz.dataset.total || filas.length);
+    resumenMatriz.textContent = `Mostrando ${visibles} de ${total} operadores`;
+
+    // Sin coincidencias se oculta la tabla y se muestra el estado vacío.
+    tablaMatriz.hidden = visibles === 0;
+    if (sinResultadosMatriz) sinResultadosMatriz.hidden = visibles > 0;
+}
+
+if (filtroMatriz) {
+    filtroMatriz.addEventListener('input', () => {
+        window.clearTimeout(temporizadorFiltroMatriz);
+        temporizadorFiltroMatriz = window.setTimeout(aplicarFiltroMatriz, 280);
+    });
+}
+
+function emojiOculto(emoji) {
+    const span = document.createElement('span');
+    span.setAttribute('aria-hidden', 'true');
+    span.textContent = emoji + ' ';
+    return span;
+}
 
 function verificarPrincipianteSugerencia(selectElement) {
     const empleadoId = selectElement.value;
@@ -342,22 +612,31 @@ function verificarPrincipianteSugerencia(selectElement) {
         tdPadre.appendChild(alertaContainer);
     }
 
+    alertaContainer.replaceChildren();
+
     // Alerta activa para 'Principiante' o cuando el nivel es vacío/Sin nivel y hay un operador seleccionado
     if ((nivel === 'Principiante' || nivel === '') && empleadoId !== '') {
-        tdPadre.style.backgroundColor = '#fffbeb';
-        tdPadre.style.border = '2px solid #f59e0b';
+        tdPadre.style.backgroundColor = 'var(--sg-gap-bg)';
+        tdPadre.style.border = '2px solid var(--sg-gap-border)';
         
-        const textoEtiqueta = (nivel === 'Principiante') ? '⚠️ Operador Principiante' : '⚠️ Sin Nivel Asignado';
+        const textoEtiqueta = (nivel === 'Principiante') ? 'Operador Principiante' : 'Sin Nivel Asignado';
+        const cajaAlerta = document.createElement('div');
+        cajaAlerta.style.cssText = 'margin-top: 6px; padding: 3px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.73rem; color: var(--sg-level-principiante-fg); font-weight: 700;';
+        cajaAlerta.append(emojiOculto('⚠️'), document.createTextNode(textoEtiqueta));
+        alertaContainer.appendChild(cajaAlerta);
 
-        alertaContainer.innerHTML = `
-            <div style="margin-top: 6px; padding: 3px 6px; background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-size: 0.73rem; color: #92400e; font-weight: 700;">
-                ${textoEtiqueta}
-            </div>
-        `;
+        // US-09: además de la alerta, se sugiere un Instructor de la estación.
+        // El nombre se escribe con textContent, nunca con innerHTML.
+        const instructor = INSTRUCTORES[estacionId];
+        if (instructor) {
+            const apoyo = document.createElement('div');
+            apoyo.style.cssText = 'margin-top: 3px; font-size: 0.72rem; color: var(--sg-link);';
+            apoyo.append(emojiOculto('👨‍🏫'), document.createTextNode(`Apoyo: ${instructor}`));
+            alertaContainer.appendChild(apoyo);
+        }
     } else {
-        tdPadre.style.backgroundColor = '#ffffff';
+        tdPadre.style.backgroundColor = 'var(--sg-card)';
         tdPadre.style.border = 'none';
-        alertaContainer.innerHTML = '';
     }
 }
 
@@ -366,13 +645,16 @@ function actualizarNivel(selectElement) {
     const estacionId = selectElement.getAttribute('data-estacion-id');
     const nuevoNivel = selectElement.value;
     const nivelAnteriorClass = selectElement.className;
+    const valorAnterior = selectElement.getAttribute('data-valor-anterior') || '';
 
-    selectElement.className = 'sg-select-nivel ';
-    if (nuevoNivel === 'Instructor') selectElement.classList.add('sg-badge-instructor');
-    else if (nuevoNivel === 'Experto') selectElement.classList.add('sg-badge-experto');
-    else if (nuevoNivel === 'Autónomo') selectElement.classList.add('sg-badge-autonomo');
-    else if (nuevoNivel === 'Principiante') selectElement.classList.add('sg-badge-principiante');
-    else selectElement.classList.add('sg-badge-sinnivel');
+    selectElement.className = 'sg-select-nivel sg-level ';
+    if (nuevoNivel === 'Instructor') selectElement.classList.add('sg-level--instructor');
+    else if (nuevoNivel === 'Experto') selectElement.classList.add('sg-level--experto');
+    else if (nuevoNivel === 'Autónomo') selectElement.classList.add('sg-level--autonomo');
+    else if (nuevoNivel === 'Principiante') selectElement.classList.add('sg-level--principiante');
+    else selectElement.classList.add('sg-level--sinnivel');
+
+    mostrarEstadoMatriz('');
 
     fetch("{% url 'personal:actualizar_nivel_matriz' %}", {
         method: "POST",
@@ -389,14 +671,18 @@ function actualizarNivel(selectElement) {
     .then(response => response.json().then(data => ({ status: response.status, body: data })))
     .then(res => {
         if (!res.body.success) {
-            alert("Error del sistema: " + (res.body.error || "No se pudo actualizar el nivel"));
+            selectElement.value = valorAnterior;
             selectElement.className = nivelAnteriorClass;
+            mostrarEstadoMatriz("Error del sistema: " + (res.body.error || "No se pudo actualizar el nivel"));
+        } else {
+            selectElement.setAttribute('data-valor-anterior', nuevoNivel);
         }
     })
     .catch(error => {
         console.error("Error al actualizar:", error);
-        alert("Ocurrió un error al guardar los cambios.");
+        selectElement.value = valorAnterior;
         selectElement.className = nivelAnteriorClass;
+        mostrarEstadoMatriz("Ocurrió un error al guardar los cambios.");
     });
 }
 </script>

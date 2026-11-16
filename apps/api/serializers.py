@@ -3,7 +3,7 @@
 Reglas que se respetan aquí:
 
 * Todo es de solo lectura salvo el endpoint de la matriz de habilidades.
-* ``Empleado.pin`` **nunca** se serializa: es una credencial de planta.
+* ``Empleado.pin_hash`` **nunca** se serializa: es una credencial de planta.
 * Las relaciones se devuelven anidadas en su forma mínima para que el esquema
   de Swagger sea legible y no se vuelva recursivo.
 """
@@ -56,7 +56,7 @@ class EmpleadoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Empleado
         fields = ["id", "numero_empleado", "nombre", "rol", "activo", "linea"]
-        # ``pin`` queda fuera a propósito: es una credencial, no un dato de consulta.
+        # ``pin_hash`` queda fuera a propósito: es una credencial, no un dato de consulta.
 
 
 class EstacionResumenSerializer(serializers.ModelSerializer):

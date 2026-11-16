@@ -18,7 +18,7 @@ def calcular_elegibles_bono(fecha_inicio=None, fecha_fin=None):
     """Calcula los operadores con 0 defectos y producción > 0 en el periodo configurado.
 
     Devuelve un diccionario con:
-    - periodo: {"inicio": date, "fin": date, "tipo": str}
+    - periodo: {"inicio": date, "fin": date, "tipo": str, "etiqueta": str}
     - elegibles: lista de dicts con datos del operador, totales y sus registros de respaldo.
     """
     config = obtener_configuracion_bono()
@@ -86,11 +86,14 @@ def calcular_elegibles_bono(fecha_inicio=None, fecha_fin=None):
 
     elegibles.sort(key=lambda x: (-x["aceptadas"], x["nombre"]))
 
+    es_rango = config.tipo_periodo == "rango"
+    etiqueta_periodo = "rango fijo" if es_rango else "ventana móvil"
     return {
         "periodo": {
             "inicio": fecha_inicio,
             "fin": fecha_fin,
             "tipo": config.get_tipo_periodo_display(),
+            "etiqueta": etiqueta_periodo,
         },
         "elegibles": elegibles,
     }

@@ -1,16 +1,35 @@
 """Pruebas de US-05 y de la corrección de US-06 (RF-1.1 y RF-1.2)."""
 
+import json
+import re
 from types import SimpleNamespace
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.test import TestCase
 from django.urls import reverse
 
+from apps.calidad.models import Asignacion
+
+from . import services
 from .models import Empleado, Estacion, Linea, NivelHabilidad, Rol, SkillMatrix
+from .views import MAX_INTENTOS_FALLIDOS, MENSAJE_BLOQUEO
 
 User = get_user_model()
+
+
+def crear_empleado(**datos):
+    """Crea un empleado con el PIN ya hasheado (nunca en texto plano)."""
+    pin = datos.pop("pin", None)
+    empleado = Empleado.objects.create(**datos)
+    if pin is not None:
+        empleado.set_pin(pin)
+        empleado.save(update_fields=["pin_hash"])
+    return empleado
+
 
 PERMISOS_DE_CONSULTA = (
     "view_empleado",
@@ -32,7 +51,7 @@ def planta(db):
     estacion_3 = Estacion.objects.create(linea=linea_3, nombre="Corte", orden=1)
     estacion_4 = Estacion.objects.create(linea=linea_4, nombre="Soldadura", orden=1)
 
-    jefe_3 = Empleado.objects.create(
+    jefe_3 = crear_empleado(
         numero_empleado="SG-0002",
         nombre="Rocío Salas",
         rol=rol_jefe,
@@ -41,20 +60,20 @@ def planta(db):
     linea_3.jefe_linea = jefe_3
     linea_3.save(update_fields=["jefe_linea"])
 
-    ana = Empleado.objects.create(
+    ana = crear_empleado(
         numero_empleado="SG-0100",
         nombre="Ana Activa",
         rol=rol_operador,
         linea=linea_3,
     )
-    beto = Empleado.objects.create(
+    beto = crear_empleado(
         numero_empleado="SG-0101",
         nombre="Beto Baja",
         rol=rol_operador,
         linea=linea_3,
         activo=False,
     )
-    carla = Empleado.objects.create(
+    carla = crear_empleado(
         numero_empleado="SG-0102",
         nombre="Carla Otra Línea",
         rol=rol_operador,
@@ -218,12 +237,6 @@ def test_linea_rechaza_como_jefe_a_quien_no_tiene_ese_rol(planta):
     with pytest.raises(ValidationError, match="Jefe de Línea"):
         planta.linea_3.full_clean()
 
-import json
-from django.test import TestCase
-from django.urls import reverse
-from apps.personal import services
-from apps.personal.models import Empleado, Estacion, Linea, Rol, SkillMatrix
-
 
 class MatrizSeguridadTests(TestCase):
     def setUp(self):
@@ -236,7 +249,7 @@ class MatrizSeguridadTests(TestCase):
         self.estacion_l3 = Estacion.objects.create(linea=self.linea_3, nombre="Corte", orden=1)
         self.estacion_l4 = Estacion.objects.create(linea=self.linea_4, nombre="Soldadura", orden=1)
 
-        self.jefe_l3 = Empleado.objects.create(
+        self.jefe_l3 = crear_empleado(
             numero_empleado="SG-0003",
             nombre="Jefe L3",
             pin="123456",
@@ -244,7 +257,7 @@ class MatrizSeguridadTests(TestCase):
             linea=self.linea_3,
             activo=True,
         )
-        self.operador_l3 = Empleado.objects.create(
+        self.operador_l3 = crear_empleado(
             numero_empleado="SG-0101",
             nombre="Operador L3",
             pin="123456",
@@ -252,7 +265,7 @@ class MatrizSeguridadTests(TestCase):
             linea=self.linea_3,
             activo=True,
         )
-        self.operador_l4 = Empleado.objects.create(
+        self.operador_l4 = crear_empleado(
             numero_empleado="SG-0201",
             nombre="Operador L4",
             pin="123456",
@@ -324,3 +337,303 @@ class MatrizSeguridadTests(TestCase):
                 "Experto",
                 linea=self.linea_3,
             )
+
+    def _post_json(self, cuerpo):
+        session = self.client.session
+        session["empleado_id"] = self.jefe_l3.id
+        session.save()
+        return self.client.post(
+            reverse("personal:actualizar_nivel_matriz"),
+            data=json.dumps(cuerpo),
+            content_type="application/json",
+        )
+
+    def test_b07_cuerpo_lista_no_devuelve_500_en_matriz(self):
+        respuesta = self._post_json([])
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(respuesta.json()["success"])
+
+    def test_b07_cuerpo_null_no_devuelve_500_en_matriz(self):
+        respuesta = self._post_json(None)
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(respuesta.json()["success"])
+
+    def test_b07_ids_no_numericos_no_devuelven_500_en_matriz(self):
+        respuesta = self._post_json(
+            {"empleado_id": "abc", "estacion_id": "x", "nivel": "Experto"}
+        )
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn("empleado_id", respuesta.json()["error"])
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+    def test_b07_falta_nivel_no_devuelve_500_en_matriz(self):
+        respuesta = self._post_json(
+            {"empleado_id": self.operador_l3.id, "estacion_id": self.estacion_l3.id}
+        )
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertIn("nivel", respuesta.json()["error"])
+        self.assertEqual(SkillMatrix.objects.count(), 0)
+
+
+class MatrizFiltrosTests(TestCase):
+    """Lote C: filtros de la matriz general y guardado con filtros activos."""
+
+    def setUp(self):
+        self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+        self.linea = Linea.objects.create(nombre="Línea 3")
+        self.corte = Estacion.objects.create(linea=self.linea, nombre="Corte", orden=1)
+        self.soldadura = Estacion.objects.create(
+            linea=self.linea, nombre="Soldadura", orden=2
+        )
+
+        self.jefe = crear_empleado(
+            numero_empleado="SG-0003",
+            nombre="Jefe L3",
+            rol=self.rol_jefe,
+            linea=self.linea,
+            activo=True,
+        )
+        self.ana = crear_empleado(
+            numero_empleado="SG-0101",
+            nombre="Ana López",
+            rol=self.rol_operador,
+            linea=self.linea,
+            activo=True,
+        )
+        self.bruno = crear_empleado(
+            numero_empleado="SG-0102",
+            nombre="Bruno Díaz",
+            rol=self.rol_operador,
+            linea=self.linea,
+            activo=True,
+        )
+        self.carla = crear_empleado(
+            numero_empleado="SG-0103",
+            nombre="Carla Ruiz",
+            rol=self.rol_operador,
+            linea=self.linea,
+            activo=True,
+        )
+
+        # Ana y Carla tienen nivel en todas las estaciones; a Bruno le falta una.
+        for estacion in (self.corte, self.soldadura):
+            SkillMatrix.objects.create(
+                empleado=self.ana, estacion=estacion, nivel=NivelHabilidad.EXPERTO
+            )
+            SkillMatrix.objects.create(
+                empleado=self.carla, estacion=estacion, nivel=NivelHabilidad.AUTONOMO
+            )
+        SkillMatrix.objects.create(
+            empleado=self.bruno,
+            estacion=self.corte,
+            nivel=NivelHabilidad.PRINCIPIANTE,
+        )
+
+        sesion = self.client.session
+        sesion["empleado_id"] = self.jefe.id
+        sesion.save()
+
+        self.url = reverse("personal:matriz_competencias")
+
+    def _nombres_mostrados(self, respuesta):
+        return [fila["empleado"].nombre for fila in respuesta.context["matriz"]]
+
+    def test_filtro_q_busca_por_nombre(self):
+        respuesta = self.client.get(self.url, {"q": "ANA"})
+
+        self.assertEqual(self._nombres_mostrados(respuesta), ["Ana López"])
+
+    def test_filtro_q_busca_por_numero_empleado(self):
+        respuesta = self.client.get(self.url, {"q": "sg-0102"})
+
+        self.assertEqual(self._nombres_mostrados(respuesta), ["Bruno Díaz"])
+
+    def test_filtro_faltantes_solo_operadores_con_estacion_sin_nivel(self):
+        respuesta = self.client.get(self.url, {"faltantes": "1"})
+
+        self.assertEqual(self._nombres_mostrados(respuesta), ["Bruno Díaz"])
+
+    def test_resumen_muestra_el_total_sin_filtrar(self):
+        respuesta = self.client.get(self.url, {"q": "Bruno"})
+
+        self.assertContains(respuesta, "Mostrando 1 de 3 operadores")
+
+    def test_vista_asignacion_no_renderiza_la_tabla_de_habilidades(self):
+        respuesta = self.client.get(self.url, {"vista": "asignacion"})
+
+        self.assertEqual(respuesta.context["vista"], "asignacion")
+        self.assertContains(respuesta, "Asignación vigente de la línea en el turno")
+        self.assertNotContains(
+            respuesta, "Matriz general de habilidades por operador y estación."
+        )
+
+    def test_vista_matriz_no_renderiza_la_tabla_de_asignacion(self):
+        respuesta = self.client.get(self.url, {"vista": "matriz"})
+
+        self.assertEqual(respuesta.context["vista"], "matriz")
+        self.assertContains(
+            respuesta, "Matriz general de habilidades por operador y estación."
+        )
+        self.assertNotContains(
+            respuesta, "Asignación vigente de la línea en el turno"
+        )
+
+    def test_vista_invalida_cae_en_la_matriz(self):
+        respuesta = self.client.get(self.url, {"vista": "otra"})
+
+        self.assertEqual(respuesta.context["vista"], "matriz")
+        self.assertContains(
+            respuesta, "Matriz general de habilidades por operador y estación."
+        )
+        self.assertNotContains(
+            respuesta, "Asignación vigente de la línea en el turno"
+        )
+
+    def test_pestanas_conservan_q_faltantes_y_turno(self):
+        respuesta = self.client.get(
+            self.url, {"q": "ana", "faltantes": "1", "turno": "2"}
+        )
+        contenido = respuesta.content.decode()
+
+        self.assertContains(respuesta, 'role="tablist"')
+        self.assertEqual(contenido.count('role="tab"'), 2)
+
+        for vista in ("matriz", "asignacion"):
+            enlaces = re.findall(
+                rf'href="([^"]*vista={vista}[^"]*)"', contenido
+            )
+            self.assertTrue(enlaces, f"Falta la pestaña {vista}")
+            for enlace in enlaces:
+                self.assertIn("q=ana", enlace)
+                self.assertIn("faltantes=1", enlace)
+                self.assertIn("turno=2", enlace)
+
+    def test_mostrando_x_de_y_sigue_apareciendo_y_el_filtro_es_buscable(self):
+        respuesta = self.client.get(self.url)
+
+        self.assertContains(respuesta, "Mostrando 3 de 3 operadores")
+        self.assertContains(respuesta, 'aria-live="polite"')
+        self.assertContains(respuesta, 'type="search"')
+        self.assertContains(respuesta, 'autocomplete="off"')
+        self.assertContains(respuesta, 'for="filtro-q"')
+        self.assertContains(respuesta, 'id="filtro-q"')
+
+    def test_guardar_asignacion_con_filtros_activos_guarda_todas_las_estaciones(self):
+        respuesta = self.client.post(
+            f"{self.url}?q=ana&faltantes=1&turno=2",
+            {
+                "guardar_asignacion": "1",
+                "turno": "2",
+                f"estacion_{self.corte.id}": str(self.ana.id),
+                f"estacion_{self.soldadura.id}": str(self.bruno.id),
+            },
+        )
+
+        self.assertEqual(respuesta.status_code, 302)
+        asignaciones = Asignacion.objects.filter(turno=2)
+        self.assertEqual(asignaciones.count(), 2)
+        self.assertSetEqual(
+            set(asignaciones.values_list("estacion_id", flat=True)),
+            {self.corte.id, self.soldadura.id},
+        )
+
+
+class PinHasheadoTests(TestCase):
+    """B-01: el PIN de planta se guarda y se valida siempre como hash."""
+
+    def setUp(self):
+        self.rol = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.linea = Linea.objects.create(nombre="Línea 3")
+        self.empleado = crear_empleado(
+            numero_empleado="SG-0002",
+            nombre="Rocío Salas",
+            pin="123456",
+            rol=self.rol,
+            linea=self.linea,
+        )
+
+    def test_pin_no_se_guarda_en_texto_plano(self):
+        self.empleado.refresh_from_db()
+
+        self.assertNotEqual(self.empleado.pin_hash, "123456")
+        self.assertTrue(self.empleado.check_pin("123456"))
+
+    def test_check_pin_acepta_el_correcto_y_rechaza_el_incorrecto(self):
+        self.assertTrue(self.empleado.check_pin("123456"))
+        self.assertFalse(self.empleado.check_pin("654321"))
+
+    def test_check_pin_tolera_un_empleado_sin_pin(self):
+        self.empleado.pin_hash = None
+
+        self.assertFalse(self.empleado.check_pin("123456"))
+
+    def test_login_funciona_con_el_pin_hasheado(self):
+        respuesta = self.client.post(
+            reverse("personal:login"),
+            {"numero_empleado": "SG-0002", "pin": "123456"},
+        )
+
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(self.client.session["empleado_id"], self.empleado.id)
+
+
+class BloqueoPorIntentosTests(TestCase):
+    """B-02: cinco fallos bloquean el acceso temporalmente, sin perder el motivo."""
+
+    def setUp(self):
+        # La cache local sobrevive entre pruebas: se limpia antes y después.
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.rol = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+        self.empleado = crear_empleado(
+            numero_empleado="SG-0002",
+            nombre="Rocío Salas",
+            pin="123456",
+            rol=self.rol,
+        )
+        self.url = reverse("personal:login")
+
+    def _intentar(self, pin):
+        return self.client.post(
+            self.url,
+            {"numero_empleado": "SG-0002", "pin": pin},
+        )
+
+    def test_cinco_fallos_bloquean_incluso_el_pin_correcto(self):
+        respuesta = self._intentar("000000")
+        self.assertContains(respuesta, "PIN incorrecto")
+
+        for _ in range(MAX_INTENTOS_FALLIDOS - 1):
+            respuesta = self._intentar("000000")
+
+        self.assertContains(respuesta, MENSAJE_BLOQUEO)
+        respuesta = self._intentar("123456")
+        self.assertContains(respuesta, MENSAJE_BLOQUEO)
+        self.assertNotIn("empleado_id", self.client.session)
+
+    def test_al_terminar_el_bloqueo_vuelve_a_entrar(self):
+        for _ in range(MAX_INTENTOS_FALLIDOS):
+            self._intentar("000000")
+
+        self.assertContains(self._intentar("123456"), MENSAJE_BLOQUEO)
+        cache.clear()  # simula que expiró la ventana de 15 minutos
+
+        respuesta = self._intentar("123456")
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(self.client.session["empleado_id"], self.empleado.id)
+
+    def test_un_login_correcto_limpia_el_contador(self):
+        for _ in range(MAX_INTENTOS_FALLIDOS - 1):
+            self._intentar("000000")
+        self.assertEqual(self._intentar("123456").status_code, 302)
+
+        for _ in range(MAX_INTENTOS_FALLIDOS - 1):
+            respuesta = self._intentar("000000")
+
+        self.assertContains(respuesta, "PIN incorrecto")
+        self.assertNotContains(respuesta, MENSAJE_BLOQUEO)

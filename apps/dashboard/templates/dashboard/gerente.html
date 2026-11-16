@@ -12,26 +12,20 @@
   <div>
     <p class="sg-eyebrow">Gerencia · Planta</p>
     <h1>Tablero gerencial</h1>
-    <p>Vista de conjunto para seguir producción, calidad, bonos y capacitación.</p>
+    <p>Vista de conjunto para seguir producción, calidad y bonos del periodo.</p>
   </div>
   <span class="sg-badge sg-badge--ok">Gerente de Producción</span>
 </header>
+
 {% include "dashboard/_tablero_semaforos.html" %}
 
-<section class="sg-role-grid" aria-label="Secciones del tablero gerencial">
-  <article class="sg-card sg-role-card">
-    <p class="sg-eyebrow">Producción</p>
-    <h2>Indicadores de planta</h2>
-    <p class="sg-muted">FPY, piezas por hora y tasa de defectos de todas las líneas.</p>
-    <div class="sg-empty">Pendiente de conectar los datos de producción.</div>
-  </article>
+<hr class="sg-dash-sep">
 
-  <article class="sg-card sg-role-card" aria-labelledby="titulo-bono-cero-defectos">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap;">
-      <div>
-        <p class="sg-eyebrow">Reconocimiento</p>
-        <h2 id="titulo-bono-cero-defectos">Bonos del periodo</h2>
-      </div>
+<section class="sg-dash-section" id="reconocimiento" aria-labelledby="titulo-reconocimiento">
+  <h2 class="sg-dash-title" id="titulo-reconocimiento">Reconocimiento</h2>
+  <article class="sg-card sg-bonos" aria-labelledby="titulo-bono-cero-defectos">
+    <div class="sg-bonos__cab">
+      <h3 id="titulo-bono-cero-defectos">Bonos del periodo</h3>
       {% if user.is_staff %}
       <a href="/admin/dashboard/configuracionbono/" class="sg-btn sg-btn--ghost sg-small">
         Configurar periodo
@@ -41,56 +35,76 @@
 
     <p class="sg-muted sg-small">
       Periodo evaluado: <strong>{{ bono.periodo.inicio }}</strong> al <strong>{{ bono.periodo.fin }}</strong>
-      ({{ bono.periodo.tipo }}).
+      ({{ bono.periodo.etiqueta }}).
     </p>
+    <p class="sg-muted sg-small">Total de elegibles: {{ bono.elegibles|length }}.</p>
 
-    {% if bono.elegibles %}
-      <div style="overflow-x: auto; margin-top: 0.75rem;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--sg-border, #e2e8f0); text-align: left;">
-              <th style="padding: 0.45rem 0.4rem;">No. Emp.</th>
-              <th style="padding: 0.45rem 0.4rem;">Operador</th>
-              <th style="padding: 0.45rem 0.4rem; text-align: right;">Aceptadas</th>
-              <th style="padding: 0.45rem 0.4rem; text-align: right;">Defectos</th>
-              <th style="padding: 0.45rem 0.4rem; text-align: right;">FPY</th>
-              <th style="padding: 0.45rem 0.4rem; text-align: right;">Evidencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for op in bono.elegibles %}
-            <tr style="border-bottom: 1px solid var(--sg-border, #f1f5f9);">
-              <td style="padding: 0.45rem 0.4rem;">{{ op.numero_empleado }}</td>
-              <td style="padding: 0.45rem 0.4rem; font-weight: 600;">{{ op.nombre }}</td>
-              <td style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.aceptadas }}</td>
-              <td style="padding: 0.45rem 0.4rem; text-align: right;">
-                <span class="sg-badge sg-badge--ok">0 (0.0 %)</span>
-              </td>
-              <td style="padding: 0.45rem 0.4rem; text-align: right;">{{ op.fpy }} %</td>
-              <td style="padding: 0.45rem 0.4rem; text-align: right;">
-                <a href="{% url 'dashboard:detalle_elegible_bono' op.empleado_id %}" class="sg-small">
-                  Ver detalle ({{ op.total_registros }})
-                </a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="sg-empty">No hay operadores elegibles a bono por cero defectos en el periodo evaluado.</div>
-    {% endif %}
-  </article>
-
-  <article class="sg-card sg-role-card">
-    <p class="sg-eyebrow">Desarrollo</p>
-    <h2>Capacitación dirigida</h2>
-    <p class="sg-muted">Estaciones y personas que requieren apoyo según sus resultados.</p>
-    <div class="sg-empty">Pendiente de conectar las alertas de capacitación.</div>
+    {% include "dashboard/_bonos_tabla.html" %}
   </article>
 </section>
+{% endblock %}
 
-<footer class="sg-role-footer">
-  <span class="sg-muted sg-small">Vista base por rol. Los datos se integran en una historia posterior.</span>
-</footer>
+{% block extra_js %}
+<script>
+  // Paginación de bonos sin recargar: solo se sustituye #bonos-tabla.
+  (function () {
+    var bloque = document.getElementById('bonos-tabla');
+    if (!bloque || !window.fetch || !window.DOMParser || !window.history.pushState) return;
+
+    function anunciar(nuevo) {
+      var resumen = nuevo.querySelector('[data-bonos-resumen]');
+      if (!resumen) return;
+      var mensaje = resumen.textContent.trim();
+      // Se vuelve a escribir para que el lector de pantalla anuncie el cambio.
+      resumen.textContent = '';
+      window.setTimeout(function () { resumen.textContent = mensaje; }, 80);
+    }
+
+    function cargar(url, empujar) {
+      var destino = new URL(url, window.location.href);
+      destino.hash = '';
+      destino.searchParams.set('fragmento', 'bonos');
+
+      window.fetch(destino.toString(), {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch' }
+      }).then(function (respuesta) {
+        if (!respuesta.ok) throw new Error('No se pudo cargar la página');
+        return respuesta.text();
+      }).then(function (texto) {
+        var documento = new DOMParser().parseFromString(texto, 'text/html');
+        var nuevo = documento.getElementById('bonos-tabla');
+        var actual = document.getElementById('bonos-tabla');
+        if (!nuevo || !actual) throw new Error('Falta el bloque de bonos');
+        var importado = document.importNode(nuevo, true);
+        actual.replaceWith(importado);
+        importado.focus({ preventScroll: true });
+        anunciar(importado);
+        if (empujar) {
+          var pagina = importado.getAttribute('data-pagina') || '1';
+          window.history.pushState({ pagina: pagina }, '', '?pagina=' + encodeURIComponent(pagina));
+        }
+      }).catch(function () {
+        // Si fetch falla se sigue el enlace normal, que lleva a #reconocimiento.
+        window.location.href = url;
+      });
+    }
+
+    document.addEventListener('click', function (evento) {
+      if (evento.defaultPrevented || evento.button !== 0) return;
+      if (evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+      var objetivo = evento.target;
+      if (!objetivo || !objetivo.closest) return;
+      var enlace = objetivo.closest('[data-paginador] a[data-pagina]');
+      if (!enlace) return;
+      evento.preventDefault();
+      cargar(enlace.getAttribute('href'), true);
+    });
+
+    window.addEventListener('popstate', function () {
+      var pagina = new URLSearchParams(window.location.search).get('pagina') || '1';
+      cargar('?pagina=' + encodeURIComponent(pagina) + '#reconocimiento', false);
+    });
+  })();
+</script>
 {% endblock %}

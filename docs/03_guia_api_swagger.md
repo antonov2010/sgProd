@@ -114,7 +114,7 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; u = g
 Con sesión, Swagger UI **envía el token CSRF automáticamente** en los `POST`;
 no tienes que pegarlo a mano.
 
-> **El PIN nunca sale por la API.** `Empleado.pin` está excluido del serializer
+> **El PIN nunca sale por la API.** `Empleado.pin_hash` está excluido del serializer
 > a propósito: es una credencial de planta, no un dato de consulta. Si algún día
 > necesitas cambiarlo, va por el Admin, no por aquí.
 
@@ -170,7 +170,7 @@ Todo es `GET` (lista y detalle) salvo donde se indique.
 | :-- | :-- | :-- | :-- |
 | personal | Roles | `/api/roles/` | `?search=` por nombre y tipo. |
 | personal | Líneas | `/api/lineas/` | Incluye `jefe_linea` y sus estaciones. |
-| personal | Empleados | `/api/empleados/` | **Sin `pin`.** `?search=` por número o nombre. |
+| personal | Empleados | `/api/empleados/` | **Sin `pin` ni `pin_hash`.** `?search=` por número o nombre. |
 | personal | Estaciones | `/api/estaciones/` | Filtra por línea con `?search=`. |
 | matriz | Matriz de habilidades | `/api/skill-matrix/` | Un registro por empleado + estación. |
 | matriz | Asignar nivel | `POST /api/matriz/nivel/` | Único endpoint de escritura. |

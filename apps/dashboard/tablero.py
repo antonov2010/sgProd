@@ -11,29 +11,14 @@ SUPUESTOS PROVISIONALES (confirmar con Rocío y Carlos Eduardo):
 - Cumplimiento de meta = piezas aceptadas / meta acumulada.
 """
 
-from .umbrales import ETIQUETAS, UMBRALES, peor,semaforo
 from .kpis import (
     calcular_fpy as fpy,
     calcular_tasa_defectos as tasa_defectos,
     desglosar_kpis,
 )
+from .umbrales import ETIQUETAS, UMBRALES, peor, semaforo
+
 _GRAVEDAD_ORDEN = {"bad": 0, "warn": 1, "ok": 2, "none": 3}
-
-
-def fpy(aceptadas, rechazadas, retrabajo):
-    """Porcentaje de piezas buenas a la primera. None si no hay piezas."""
-    total = aceptadas + rechazadas + retrabajo
-    if total == 0:
-        return None
-    return round(100 * aceptadas / total, 1)
-
-
-def tasa_defectos(aceptadas, rechazadas, retrabajo):
-    """Porcentaje de piezas rechazadas. None si no hay piezas."""
-    total = aceptadas + rechazadas + retrabajo
-    if total == 0:
-        return None
-    return round(100 * rechazadas / total, 1)
 
 
 def cumplimiento_meta(aceptadas, meta):

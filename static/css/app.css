@@ -15,6 +15,11 @@
   text-decoration: none;
 }
 .sg-nav .sg-logo b { color: var(--sg-thread); }
+.sg-nav-user {
+  color: var(--sg-on-solid);
+  font-weight: 500;
+  margin-right: 15px;
+}
 
 .sg-flashes {
   display: grid;
@@ -102,6 +107,46 @@
 .sg-role-card h2 { margin: 0; font-size: 1.2rem; }
 .sg-role-card p { margin: 0; }
 .sg-role-card .sg-empty { margin-top: auto; }
+
+/* Indicadores del turno del jefe: número grande, unidad y contexto. */
+.sg-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.sg-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  border-top: 5px solid var(--sg-teal);
+}
+.sg-kpi__nombre {
+  margin: 0;
+  color: var(--sg-muted);
+  font: 700 .9rem var(--sg-font-head);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.sg-kpi__cifra {
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  margin: 0;
+}
+.sg-kpi__valor {
+  font: 700 2.2rem/1.1 var(--sg-font-head);
+  font-variant-numeric: tabular-nums;
+}
+.sg-kpi__unidad {
+  color: var(--sg-muted);
+  font-weight: 600;
+}
+.sg-kpi__contexto {
+  margin: 0;
+  color: var(--sg-muted);
+  font-size: .9rem;
+}
 .sg-role-footer {
   display: flex;
   flex-wrap: wrap;
@@ -115,9 +160,119 @@
   color: var(--sg-muted);
   font-size: .95rem;
 }
+/* Acceso destacado que conserva el marco punteado del estado vacío. */
+.sg-empty--action {
+  display: block;
+  border-style: solid;
+  border-color: var(--sg-primary);
+  background: var(--sg-primary);
+  color: var(--sg-on-solid);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.sg-empty--action:hover {
+  background: var(--sg-primary-dark);
+  border-color: var(--sg-primary-dark);
+}
 
 @media (max-width: 640px) {
   .sg-login__card { padding: 1.2rem; }
   .sg-nav { align-items: flex-start; }
   .sg-nav__links { width: 100%; margin-left: 0; }
 }
+
+/* ---------- Tablero gerencial ---------- */
+/* Separación fija entre secciones: el hueco total es 70px e incluye el trazo
+   de 1px; las secciones no aportan margen, así que no se suman espaciados. */
+.sg-dash-section { margin: 0; }
+.sg-dash-title { margin: 0 0 .35rem; font-size: 1.3rem; }
+/* Un solo trazo: sin bordes dobles ni separadores del navegador. */
+.sg-dash-sep {
+  height: 0;
+  margin: calc((70px - 1px) / 2) 0;
+  border: 0;
+  border-top: 1px solid var(--sg-line);
+}
+/* La barra superior queda fija al hacer scroll a la gráfica o a los bonos. */
+#reconocimiento,
+#bonos-tabla,
+.tg-panel { scroll-margin-top: 5rem; }
+
+/* Carrusel de líneas de producción.
+   Sin JavaScript la pista conserva la rejilla de .tg-lineas y se ven todas
+   las tarjetas. El script agrega .is-carrusel para pasar a 3 por vista. */
+.tg-carrusel { position: relative; }
+.tg-carrusel__pista {
+  transition: transform 500ms cubic-bezier(.22, .61, .36, 1);
+  will-change: transform;
+}
+/* Sin movimiento: el carrusel salta de tarjeta sin animar la pista. */
+@media (prefers-reduced-motion: reduce) {
+  .tg-carrusel__pista { transition: none; }
+}
+.tg-carrusel.is-carrusel {
+  /* El padding/margen de 4px ya no hace falta sin el anillo de la tarjeta
+     activa, y hacía que el carrusel invadiera el margen del separador. */
+  overflow: hidden;
+}
+.tg-carrusel.is-carrusel .tg-carrusel__pista { display: flex; gap: .85rem; }
+.tg-carrusel.is-carrusel .tg-linea {
+  flex: 0 0 calc((100% - 1.7rem) / 3);
+  min-width: 0;
+}
+.tg-carrusel__controles {
+  display: flex;
+  justify-content: center;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+.tg-carrusel:not(.is-carrusel) .tg-carrusel__controles { display: none; }
+.tg-carrusel__btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 2px solid var(--sg-teal);
+  border-radius: var(--sg-radius);
+  background: var(--sg-card);
+  color: var(--sg-teal);
+  font: 600 1rem var(--sg-font-head);
+  cursor: pointer;
+}
+.tg-carrusel__btn:hover { background: var(--sg-teal); color: var(--sg-on-solid); }
+.tg-carrusel__btn:focus-visible { outline: 3px solid var(--sg-thread); outline-offset: 2px; }
+.tg-carrusel__btn[disabled] { opacity: .45; cursor: default; }
+.tg-carrusel__btn[disabled]:hover { background: var(--sg-card); color: var(--sg-teal); }
+
+/* Tarjeta de reconocimiento y su tabla paginada. */
+.sg-bonos { scroll-margin-top: 5rem; }
+.sg-bonos__cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.sg-bonos__cab h3 { margin: 0; }
+.sg-bonos__scroll { margin-top: .75rem; }
+.sg-table--compact { font-size: .9rem; }
+.sg-table--compact th,
+.sg-table--compact td { padding: .45rem .4rem; }
+.sg-table--compact .sg-num { text-align: right; }
+.sg-bonos__paginador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .85rem;
+}
+.sg-bonos__estado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem .75rem;
+  margin: 0;
+}
+.sg-bonos__rango { color: var(--sg-muted); }
+/* El foco programático se conserva, pero sin anillo visible al paginar. */
+.sg-bonos__bloque:focus { outline: none; }

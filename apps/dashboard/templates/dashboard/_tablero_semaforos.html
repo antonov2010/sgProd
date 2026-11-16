@@ -1,10 +1,10 @@
 {# Tablero At-a-Glance (US-13). Se incluye desde gerente.html. #}
 {# Datos de ejemplo hasta conectar los registros reales. #}
 <style>
-  .tg { --tg-ok: var(--sg-ok, #1E8E4E); --tg-warn: var(--sg-warn, #C98A00); --tg-bad: var(--sg-bad, #C8322B);
-        --tg-line: var(--sg-line, rgba(128,128,128,.35)); --tg-card: var(--sg-card, transparent);
-        --tg-muted: var(--sg-muted, rgba(128,128,128,.95)); --tg-focus: var(--sg-thread, #F2B705);
-        margin-bottom: 1.5rem; }
+  .tg { --tg-ok: var(--sg-ok); --tg-warn: var(--sg-warn); --tg-bad: var(--sg-bad);
+        --tg-ok-fg: var(--sg-ok-fg); --tg-warn-fg: var(--sg-warn-fg); --tg-bad-fg: var(--sg-bad-fg);
+        --tg-line: var(--sg-line); --tg-card: var(--sg-card);
+        --tg-muted: var(--sg-muted); --tg-focus: var(--sg-thread); }
   .tg * { box-sizing: border-box; }
   .tg h3 { margin: 0; }
   .tg-aviso { margin: 0 0 1rem; color: var(--tg-muted); font-size: .95rem; }
@@ -19,38 +19,103 @@
   .tg-cab { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
   .tg-badge { display: inline-block; padding: .1rem .65rem; border-radius: 999px; font-size: .85rem; font-weight: 700;
               border: 1.5px solid currentColor; white-space: nowrap; }
-  .tg-badge.is-ok { color: var(--tg-ok); } .tg-badge.is-warn { color: var(--tg-warn); }
-  .tg-badge.is-bad { color: var(--tg-bad); } .tg-badge.is-none { color: var(--tg-muted); }
-  .tg-sec { margin: 1.5rem 0 .25rem; font-size: 1.25rem; }
+  .tg-badge.is-ok { color: var(--tg-ok-fg); } .tg-badge.is-warn { color: var(--tg-warn-fg); }
+  .tg-badge.is-bad { color: var(--tg-bad-fg); } .tg-badge.is-none { color: var(--tg-muted); }
+  /* Resumen plegable por turno: cerrado por defecto, sin JavaScript. */
+  .tg-plegable { margin: 1.25rem 0 0; border: 1px solid var(--tg-line); border-radius: 10px;
+                 background: var(--tg-card); }
+  .tg-plegable > summary { cursor: pointer; padding: .75rem 1rem; min-height: 48px;
+                           font: 700 1.1rem var(--sg-font-head); list-style-position: inside; }
+  .tg-plegable > summary:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+  .tg-plegable[open] > summary { border-bottom: 1px solid var(--tg-line); }
+  .tg-cuenta { float: right; color: var(--tg-muted); font-size: .9rem; font-weight: 600; }
+  .tg-turnos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem;
+               margin: 0; padding: .9rem 1rem 1rem; }
+  .tg-turno h3 { font-size: 1rem; }
+  .tg-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .45rem; }
+  .tg-chip { display: inline-flex; align-items: baseline; gap: .35rem; padding: .2rem .65rem;
+             border: 1px solid var(--tg-line); border-radius: 999px; font-size: .9rem; }
+  .tg-chip small { color: var(--tg-muted); }
+  .tg-chip b { font-variant-numeric: tabular-nums; }
   .tg-ayuda { margin: 0 0 .75rem; color: var(--tg-muted); font-size: .95rem; }
   .tg-lineas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
-  .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column; }
-  .tg-linea.is-activa { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
-  .tg-resumen { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .25rem 0 .5rem; }
-  .tg-resumen strong { font-size: 1.6rem; }
-  .tg-spark { width: 160px; height: 44px; flex: none; }
-  .tg-personal { margin: 0 0 .6rem; padding: .55rem 0; border-top: 1px solid var(--tg-line); font-size: .92rem; }
-  .tg-personal b { font-weight: 700; }
-  .tg-nombres { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
-  .tg-nombres span { padding: .05rem .55rem; border: 1px solid var(--tg-line); border-radius: 999px; font-size: .82rem; }
+  .tg-linea { border-left: 8px solid var(--tg-line); display: flex; flex-direction: column;
+              gap: .85rem; padding: 1.05rem 1.15rem 1.1rem; container-type: inline-size; }
+  /* La tarjeta activa se distingue por su barra de estado, sin anillo. */
+  /* Cabecera: FPY grande, sparkline a la derecha y una sola línea de contexto. */
+  .tg-linea .tg-cab { margin-bottom: 0; }
+  .tg-linea .tg-cab h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                         font-size: 1.05rem; }
+  .tg-linea .tg-badge { padding: .05rem .5rem; font-size: .82rem; }
+  .tg-cabecera { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+  .tg-fpy { min-width: 0; font: 700 1.85rem/1.05 var(--sg-font-head); font-variant-numeric: tabular-nums;
+            white-space: nowrap; }
+  .tg-spark { width: 140px; max-width: 42%; height: auto; flex: 0 1 140px; }
+  .tg-fpy__pie { display: flex; align-items: baseline; gap: .5rem; margin: 0;
+                 min-width: 0; font-size: .8rem; color: var(--tg-muted); }
+  .tg-fpy__etiqueta { white-space: nowrap; }
+  .tg-jefe { min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis;
+             white-space: nowrap; font-size: .8rem; text-align: right; }
+  .tg-jefe b { color: var(--sg-ink); font-weight: 700; }
+  .tg-personal { margin: 0; padding: .55rem 0; border-top: 1px solid var(--tg-line); font-size: .85rem; }
+  .tg-total { margin: 0; }
+  .tg-total b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tg-nombres { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+  .tg-nombres span { display: inline-flex; align-items: center; max-width: 100%; min-height: 1.8rem;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                     padding: 0 .6rem; border: 1px solid var(--tg-line); border-radius: 999px;
+                     font-size: .8rem; }
   .tg-nombres .mas { color: var(--tg-muted); border-style: dashed; }
-  .tg-estaciones { list-style: none; margin: 0 0 .75rem; padding: 0; }
-  .tg-estaciones li { display: flex; align-items: center; gap: .6rem; padding: .4rem 0; border-top: 1px solid var(--tg-line); }
+  /* Estaciones en 4 filas × 2 columnas dentro de la tarjeta. */
+  .tg-estaciones { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+                   column-gap: .85rem; row-gap: .3rem; margin: 0; padding: 0; }
+  .tg-estaciones li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
+                      column-gap: .35rem; min-height: 2.8rem; padding: .1rem 0;
+                      border-top: 1px solid var(--tg-line); }
   .tg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
   .tg-dot.is-ok { background: var(--tg-ok); } .tg-dot.is-warn { background: var(--tg-warn); }
   .tg-dot.is-bad { background: var(--tg-bad); } .tg-dot.is-none { background: var(--tg-muted); }
-  .tg-estaciones .n { flex: 1; min-width: 0; }
-  .tg-estaciones .v { font-weight: 700; white-space: nowrap; }
-  .tg-estaciones .e { min-width: 5.2rem; white-space: nowrap; text-align: right; color: var(--tg-muted); font-size: .9rem; }
-  .tg-ver { margin-top: auto; min-height: 48px; width: 100%; border: 2px solid var(--tg-focus); border-radius: 10px;
-            background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
-  .tg-ver:hover, .tg-linea.is-activa .tg-ver { background: var(--tg-focus); color: #16222E; }
+  .tg-estaciones .tg-dot { width: 10px; height: 10px; }
+  .tg-est { display: grid; min-width: 0; }
+  .tg-est .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+               font-size: .95rem; line-height: 1.1; }
+  .tg-est .meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline;
+                  column-gap: .3rem; line-height: 1.15; }
+  .tg-est .v { grid-column: 2; grid-row: 1; text-align: right; white-space: nowrap;
+               font-size: .95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tg-est .e { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+               white-space: nowrap; color: var(--tg-muted); font-size: .82rem; }
+  /* Un solo estilo de botón para todas las tarjetas. */
+  .tg-ver { margin-top: auto; min-height: 48px; width: 100%; padding: .45rem .9rem;
+            border: 2px solid var(--sg-teal); border-radius: 10px;
+            background: var(--tg-card); color: var(--sg-teal);
+            font: inherit; font-weight: 700; cursor: pointer; }
+  .tg-ver:hover { border-color: var(--sg-primary-dark); background: var(--sg-primary-dark);
+                  color: var(--sg-on-solid); }
   .tg-ver:focus-visible { outline: 3px solid var(--tg-focus); outline-offset: 2px; }
+  @media (max-width: 720px) {
+    .tg-estaciones { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* Si la tarjeta queda angosta (carrusel en pantallas medianas), una columna
+     evita recortar el estado de la estación. */
+  @container (max-width: 280px) {
+    .tg-estaciones { grid-template-columns: minmax(0, 1fr); }
+  }
+  /* Tarjetas mínimas (carrusel a 3 en pantallas muy angostas): la cabecera
+     se reacomoda en vez de desbordar. */
+  @container (max-width: 220px) {
+    .tg-spark { display: none; }
+    .tg-fpy { font-size: 1.45rem; }
+    .tg-fpy__pie { flex-wrap: wrap; }
+    .tg-fpy__etiqueta { white-space: normal; }
+    .tg-jefe { width: 100%; margin-left: 0; overflow: visible; white-space: normal; text-align: left; }
+  }
   .tg-grafica { width: 100%; height: auto; display: block; }
+  .tg-figura { margin: 0; }
   .tg-grafica text { fill: currentColor; font-size: 12px; }
   .tg-leyenda { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin-top: .5rem; color: var(--tg-muted); font-size: .9rem; }
   .tg-leyenda span { display: inline-flex; align-items: center; gap: .4rem; }
-  .tg-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .tg-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 1rem; }
   .tg-dos h3 { margin-bottom: .15rem; }
   .tg-fila { padding: .6rem 0; border-top: 1px solid var(--tg-line); }
   .tg-fila-cab { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .3rem; }
@@ -72,126 +137,205 @@
   <p class="tg-aviso">Datos reales del último día con captura horaria.</p>
   {% endif %}
 
-  <section class="tg-kpis" aria-label="Indicadores de planta">
-    {% for k in tablero.kpis %}
-    <article class="tg-card tg-kpi is-{{ k.estado }}">
-      <div class="tg-cab">
-        <h3>{{ k.nombre }}</h3>
-        <span class="tg-badge is-{{ k.estado }}">{{ k.etiqueta }}</span>
-      </div>
-      <span class="tg-valor">{{ k.valor }}</span>
-      <small>{{ k.objetivo }}</small>
-    </article>
-    {% endfor %}
-  </section>
-
-  <h2 class="tg-sec">Líneas de producción</h2>
-  <p class="tg-ayuda">El color de cada línea es el de su peor estación. Toca «Ver tendencia» para ver su gráfica hora por hora.</p>
-  <section class="tg-lineas" aria-label="Estado por línea y estación">
-    {% for l in tablero.lineas %}
-    <article class="tg-card tg-linea is-{{ l.estado }}{% if l.id == tablero.activa %} is-activa{% endif %}" data-linea="{{ l.id }}">
-      <div class="tg-cab">
-        <h3>{{ l.nombre }}</h3>
-        <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
-      </div>
-      <div class="tg-resumen">
-        <div><strong>{{ l.fpy }}</strong><br><small>FPY de la línea</small></div>
-        <svg class="tg-spark" viewBox="0 0 160 44" role="img" aria-label="Tendencia hora por hora de {{ l.nombre }}">
-          <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      {% if l.personal.jefe or l.personal.total %}
-      <div class="tg-personal">
-        {% if l.personal.jefe %}<div>Jefe de línea: <b>{{ l.personal.jefe }}</b></div>{% endif %}
-        <div>En línea: <b>{{ l.personal.total }}</b> operadores</div>
-        <div class="tg-nombres">
-          {% for n in l.personal.visibles %}<span>{{ n }}</span>{% endfor %}
-          {% if l.personal.mas %}<span class="mas">+{{ l.personal.mas }} más</span>{% endif %}
+  <section class="sg-dash-section" id="indicadores-planta" aria-labelledby="titulo-indicadores-planta">
+    <h2 class="sg-dash-title" id="titulo-indicadores-planta">Indicadores de planta</h2>
+    <div class="tg-kpis">
+      {% for k in tablero.kpis %}
+      <article class="tg-card tg-kpi is-{{ k.estado }}">
+        <div class="tg-cab">
+          <h3>{{ k.nombre }}</h3>
+          <span class="tg-badge is-{{ k.estado }}">{{ k.etiqueta }}</span>
         </div>
-      </div>
-      {% endif %}
-      <ul class="tg-estaciones">
-        {% for e in l.estaciones %}
-        <li>
-          <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
-          <span class="n">{{ e.nombre }}</span>
-          <span class="v">{{ e.fpy }}</span>
-          <span class="e">{{ e.etiqueta }}</span>
-        </li>
-        {% endfor %}
-      </ul>
-      <button type="button" class="tg-ver" data-panel="g-{{ l.id }}" aria-controls="g-{{ l.id }}"
-              aria-expanded="{% if l.id == tablero.activa %}true{% else %}false{% endif %}">Ver tendencia</button>
-    </article>
-    {% endfor %}
-  </section>
-
-  <h2 class="tg-sec">Tendencia hora por hora</h2>
-  {% for l in tablero.lineas %}
-  {% with t=l.grafica %}
-  <article class="tg-card tg-panel" id="g-{{ l.id }}" {% if l.id != tablero.activa %}hidden{% endif %}>
-    <h3>{{ l.nombre }} · FPY por hora</h3>
-    <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
-         aria-label="FPY de {{ l.nombre }} por hora: {{ t.resumen }}">
-      {% for g in t.guias %}
-      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
-      <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+        <span class="tg-valor">{{ k.valor }}</span>
+        <small>{{ k.objetivo }}</small>
+      </article>
       {% endfor %}
-      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
-      <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
-      <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      {% for p in t.puntos %}
-      <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card, #fff)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
-      {% endfor %}
-      {% for h in t.horas %}
-      <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
-      {% endfor %}
-    </svg>
-    <div class="tg-leyenda">
-      <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
-      <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
-      <span><i class="tg-dot is-bad"></i> Rojo: menos de {{ t.amarillo }}</span>
     </div>
-  </article>
-  {% endwith %}
-  {% endfor %}
 
-  <div class="tg-dos">
-    <article class="tg-card" aria-label="Piezas por hora contra la meta">
-      <h3>Piezas por hora vs meta</h3>
-      <p class="tg-ayuda">Promedio de piezas buenas por hora y por estación. La marca vertical es la meta.</p>
-      {% for l in tablero.lineas %}{% if l.piezas %}
-      <div class="tg-fila">
-        <div class="tg-fila-cab">
-          <span><b>{{ l.nombre }}</b><small>{{ l.piezas.valor }} de {{ l.piezas.meta }} piezas/hora</small></span>
-          <span><b>{{ l.piezas.cumplimiento }}</b> <span class="tg-badge is-{{ l.piezas.estado }}">{{ l.piezas.etiqueta }}</span></span>
-        </div>
-        <div class="tg-barra" role="img" aria-label="{{ l.nombre }}: {{ l.piezas.cumplimiento }} de la meta">
-          <i class="is-{{ l.piezas.estado }}" style="width: {{ l.piezas.ancho }}%"></i>
-          <span class="tg-marca" style="left: {{ l.piezas.marca }}%"></span>
-        </div>
+    {% if tablero.por_turno %}
+    <details class="tg-plegable">
+      <summary>
+        <span>Por turno</span>
+        <span class="tg-cuenta">{{ tablero.por_turno|length }} turno{{ tablero.por_turno|length|pluralize:"s" }}</span>
+      </summary>
+      <div class="tg-turnos" role="group" aria-label="Indicadores de FPY y tasa de defectos por turno">
+        {% for nombre, k in tablero.por_turno.items %}
+        <article class="tg-card tg-turno">
+          <h3>{{ nombre }}</h3>
+          <div class="tg-chips">
+            <span class="tg-chip">
+              <small>FPY</small>
+              <b>{% if k.fpy is not None %}{{ k.fpy|floatformat:1 }} %{% else %}—{% endif %}</b>
+            </span>
+            <span class="tg-chip">
+              <small>Defectos</small>
+              <b>{% if k.tasa_defectos is not None %}{{ k.tasa_defectos|floatformat:1 }} %{% else %}—{% endif %}</b>
+            </span>
+          </div>
+        </article>
+        {% endfor %}
       </div>
-      {% endif %}{% endfor %}
-    </article>
+    </details>
+    {% endif %}
+  </section>
 
-    <article class="tg-card" aria-label="Tasa de defectos por empleado">
-      <h3>Tasa de defectos por empleado</h3>
-      <p class="tg-ayuda">Los empleados con más piezas rechazadas, para dirigir la capacitación.</p>
-      {% for e in tablero.empleados %}
-      <div class="tg-fila">
-        <div class="tg-fila-cab">
-          <span><b>{{ e.nombre }}</b><small>{{ e.donde }} · {{ e.rechazadas }} rechazadas</small></span>
-          <span><b>{{ e.tasa }}</b> <span class="tg-badge is-{{ e.estado }}">{{ e.etiqueta }}</span></span>
-        </div>
-        <div class="tg-barra" role="img" aria-label="{{ e.nombre }}: {{ e.tasa }} de defectos">
-          <i class="is-{{ e.estado }}" style="width: {{ e.ancho }}%"></i>
-        </div>
+  <hr class="sg-dash-sep">
+
+  <section class="sg-dash-section" id="lineas-produccion" aria-labelledby="titulo-lineas-produccion">
+    <h2 class="sg-dash-title" id="titulo-lineas-produccion">Líneas de producción</h2>
+    <p class="tg-ayuda">El color de cada línea es el de su peor estación. Toca «Ver tendencia» para ver su gráfica hora por hora.</p>
+    <div class="tg-carrusel" role="region" aria-roledescription="carrusel"
+         aria-label="Líneas de producción" data-carrusel>
+      <div class="tg-lineas tg-carrusel__pista" data-carrusel-pista>
+        {% for l in tablero.lineas %}
+        <article class="tg-card tg-linea is-{{ l.estado }}{% if l.id == tablero.activa %} is-activa{% endif %}" data-linea="{{ l.id }}">
+          <div class="tg-cab">
+            <h3 title="{{ l.nombre }}">{{ l.nombre }}</h3>
+            <span class="tg-badge is-{{ l.estado }}">{{ l.etiqueta }}</span>
+          </div>
+          <div class="tg-cabecera">
+            <strong class="tg-fpy">{{ l.fpy }}</strong>
+            <svg class="tg-spark" viewBox="0 0 160 44" role="img"
+                 aria-label="Tendencia de FPY hora por hora de {{ l.nombre }}: {{ l.grafica.resumen }}">
+              <polyline points="{{ l.spark }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="tg-fpy__pie">
+            <span class="tg-fpy__etiqueta">FPY de la línea</span>
+            {% if l.personal.jefe %}<span class="tg-jefe" title="{{ l.personal.jefe }}">Jefe: <b>{{ l.personal.jefe }}</b></span>{% endif %}
+          </p>
+          {% if l.personal.jefe or l.personal.total %}
+          <div class="tg-personal">
+            <p class="tg-total">En línea: <b>{{ l.personal.total }}</b> operadores</p>
+            <div class="tg-nombres">
+              {# visibles trae hasta 6; la tarjeta muestra 3 y resume el resto. #}
+              {% for n in l.personal.visibles|slice:":3" %}<span title="{{ n }}">{{ n }}</span>{% endfor %}
+              {% if l.personal.total > 3 %}<span class="mas" title="+{{ l.personal.total|add:"-3" }} operadores más">+{{ l.personal.total|add:"-3" }} más</span>{% endif %}
+            </div>
+          </div>
+          {% endif %}
+          <ul class="tg-estaciones">
+            {% for e in l.estaciones %}
+            <li>
+              <span class="tg-dot is-{{ e.estado }}" aria-hidden="true"></span>
+              <span class="tg-est">
+                <span class="n" title="{{ e.nombre }}">{{ e.nombre }}</span>
+                <span class="meta">
+                  <span class="v" title="FPY {{ e.fpy }}">{{ e.fpy }}</span>
+                  <span class="e">{{ e.etiqueta }}</span>
+                </span>
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          <button type="button" class="tg-ver" data-panel="g-{{ l.id }}" aria-controls="g-{{ l.id }}"
+                  aria-expanded="{% if l.id == tablero.activa %}true{% else %}false{% endif %}">Ver tendencia</button>
+        </article>
+        {% endfor %}
       </div>
-      {% empty %}
-      <p class="tg-nota">Sin datos por empleado todavía.</p>
-      {% endfor %}
+      <div class="tg-carrusel__controles">
+        <button type="button" class="tg-carrusel__btn" data-carrusel-prev
+                aria-label="Línea anterior">Anterior</button>
+        <button type="button" class="tg-carrusel__btn" data-carrusel-next
+                aria-label="Línea siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <hr class="sg-dash-sep">
+
+  <section class="sg-dash-section" id="tendencia-hora" aria-labelledby="titulo-tendencia-hora">
+    <h2 class="sg-dash-title" id="titulo-tendencia-hora">Tendencia hora por hora</h2>
+    {% for l in tablero.lineas %}
+    {% with t=l.grafica %}
+    <article class="tg-card tg-panel" id="g-{{ l.id }}" {% if l.id != tablero.activa %}hidden{% endif %}>
+      <h3>{{ l.nombre }} · FPY por hora</h3>
+      <figure class="tg-figura">
+        <svg class="tg-grafica" viewBox="0 0 {{ t.ancho }} {{ t.alto }}" role="img"
+             aria-labelledby="titulo-grafica-{{ l.id }} desc-grafica-{{ l.id }}">
+          <title id="titulo-grafica-{{ l.id }}">FPY de {{ l.nombre }} por hora: {{ t.resumen }}</title>
+          <desc id="desc-grafica-{{ l.id }}">Resumen: {{ t.resumen }}. Umbrales: verde desde {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.</desc>
+          {% for g in t.guias %}
+          <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="currentColor" stroke-opacity=".12"/>
+          <text x="{{ t.izq }}" y="{{ g.y }}" dx="-6" dy="4" text-anchor="end" fill-opacity=".7">{{ g.texto }}</text>
+          {% endfor %}
+          <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_verde }}" y2="{{ t.y_verde }}" stroke="var(--tg-ok)" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <line x1="{{ t.izq }}" x2="{{ t.der }}" y1="{{ t.y_amarillo }}" y2="{{ t.y_amarillo }}" stroke="var(--tg-warn)" stroke-width="1.5" stroke-dasharray="6 5"/>
+          <polyline points="{{ t.linea }}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          {% for p in t.puntos %}
+          <circle cx="{{ p.x }}" cy="{{ p.y }}" r="6.5" fill="var(--tg-{{ p.estado }})" stroke="var(--sg-card)" stroke-width="2"><title>{{ p.hora }}: {{ p.valor }}</title></circle>
+          {% endfor %}
+          {% for h in t.horas %}
+          <text x="{{ h.x }}" y="{{ t.alto }}" dy="-8" text-anchor="middle" fill-opacity=".8">{{ h.texto }}</text>
+          {% endfor %}
+        </svg>
+        <figcaption class="visually-hidden">
+          FPY de {{ l.nombre }} por hora. {{ t.resumen }}. Umbrales: verde desde
+          {{ t.verde }}, amarillo desde {{ t.amarillo }} y rojo por debajo de {{ t.amarillo }}.
+        </figcaption>
+      </figure>
+      <table class="visually-hidden">
+        <caption>FPY por hora de {{ l.nombre }}</caption>
+        <thead>
+          <tr><th scope="col">Hora</th><th scope="col">FPY</th></tr>
+        </thead>
+        <tbody>
+          {% for p in t.puntos %}
+          <tr><td>{{ p.hora }}</td><td class="sg-num">{{ p.valor }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="tg-leyenda">
+        <span><i class="tg-dot is-ok"></i> Verde: {{ t.verde }} o más</span>
+        <span><i class="tg-dot is-warn"></i> Amarillo: {{ t.amarillo }} o más</span>
+        <span><i class="tg-dot is-bad"></i> Rojo: menos de {{ t.amarillo }}</span>
+      </div>
     </article>
-  </div>
+    {% endwith %}
+    {% endfor %}
+  </section>
+
+  <hr class="sg-dash-sep">
+
+  <section class="sg-dash-section" id="produccion-defectos" aria-labelledby="titulo-produccion-defectos">
+    <h2 class="sg-dash-title" id="titulo-produccion-defectos">Producción y defectos</h2>
+    <div class="tg-dos">
+      <article class="tg-card" aria-labelledby="titulo-piezas-meta">
+        <h3 id="titulo-piezas-meta">Piezas por hora vs meta</h3>
+        <p class="tg-ayuda">Promedio de piezas buenas por hora y por estación. La marca vertical es la meta.</p>
+        {% for l in tablero.lineas %}{% if l.piezas %}
+        <div class="tg-fila">
+          <div class="tg-fila-cab">
+            <span><b>{{ l.nombre }}</b><small>{{ l.piezas.valor }} de {{ l.piezas.meta }} piezas/hora</small></span>
+            <span><b>{{ l.piezas.cumplimiento }}</b> <span class="tg-badge is-{{ l.piezas.estado }}">{{ l.piezas.etiqueta }}</span></span>
+          </div>
+          <div class="tg-barra" role="img" aria-label="{{ l.nombre }}: {{ l.piezas.cumplimiento }} de la meta">
+            <i class="is-{{ l.piezas.estado }}" style="width: {{ l.piezas.ancho }}%"></i>
+            <span class="tg-marca" style="left: {{ l.piezas.marca }}%"></span>
+          </div>
+        </div>
+        {% endif %}{% endfor %}
+      </article>
+
+      <article class="tg-card" aria-labelledby="titulo-defectos-empleado">
+        <h3 id="titulo-defectos-empleado">Tasa de defectos por empleado</h3>
+        <p class="tg-ayuda">Los empleados con más piezas rechazadas, para dirigir la capacitación.</p>
+        {% for e in tablero.empleados %}
+        <div class="tg-fila">
+          <div class="tg-fila-cab">
+            <span><b>{{ e.nombre }}</b><small>{{ e.donde }} · {{ e.rechazadas }} rechazadas</small></span>
+            <span><b>{{ e.tasa }}</b> <span class="tg-badge is-{{ e.estado }}">{{ e.etiqueta }}</span></span>
+          </div>
+          <div class="tg-barra" role="img" aria-label="{{ e.nombre }}: {{ e.tasa }} de defectos">
+            <i class="is-{{ e.estado }}" style="width: {{ e.ancho }}%"></i>
+          </div>
+        </div>
+        {% empty %}
+        <p class="tg-nota">Sin datos por empleado todavía.</p>
+        {% endfor %}
+      </article>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -212,5 +356,219 @@
         destino.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     });
+
+    // Carrusel de líneas: 3 tarjetas visibles y bucle infinito.
+    // Se clonan las primeras tarjetas al final y las últimas al inicio; así el
+    // avance desde la última posición (y el retroceso desde la primera) sigue
+    // en el sentido del movimiento. Al terminar la transición se salta sin
+    // animación a la posición equivalente (mismo contenido, salto invisible).
+    var carrusel = raiz.querySelector('[data-carrusel]');
+    if (!carrusel) return;
+    var pista = carrusel.querySelector('[data-carrusel-pista]');
+    if (!pista) return;
+    var reales = Array.prototype.slice.call(pista.querySelectorAll('.tg-linea'));
+    if (!reales.length) return;
+    var anterior = carrusel.querySelector('[data-carrusel-prev]');
+    var siguiente = carrusel.querySelector('[data-carrusel-next]');
+    var VISIBLES = 3;
+    var INTERVALO = 30000;
+    var total = reales.length;
+    var bucle = total > VISIBLES;
+    var inicio = 0; // clones colocados delante de la primera tarjeta real
+    var indice = 0; // tarjeta real que ocupa la primera posición visible
+    var pendiente = 0; // clic pedido mientras se resuelve un salto de bucle
+    var temporizador = null;
+    var reducido = window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+
+    function posicion(valor) {
+      return ((valor % total) + total) % total;
+    }
+
+    function esReducido() {
+      return !!(reducido && reducido.matches);
+    }
+
+    // Los clones son solo pintura: sin ids propios, sin foco y ocultos al lector.
+    function prepararClon(ficha) {
+      ficha.setAttribute('data-clon', 'true');
+      ficha.setAttribute('aria-hidden', 'true');
+      ficha.classList.remove('is-activa');
+      ficha.removeAttribute('id');
+      var conId = ficha.querySelectorAll('[id]');
+      for (var i = 0; i < conId.length; i++) conId[i].removeAttribute('id');
+      var botonesClon = ficha.querySelectorAll('button');
+      for (var j = 0; j < botonesClon.length; j++) {
+        botonesClon[j].setAttribute('tabindex', '-1');
+      }
+      return ficha;
+    }
+
+    function clonar() {
+      if (!bucle) return;
+      var cuantos = Math.min(VISIBLES, total - 1);
+      var cola = document.createDocumentFragment();
+      for (var i = 0; i < cuantos; i++) {
+        cola.appendChild(prepararClon(reales[i].cloneNode(true)));
+      }
+      pista.appendChild(cola);
+      var cabeza = document.createDocumentFragment();
+      for (var j = total - cuantos; j < total; j++) {
+        cabeza.appendChild(prepararClon(reales[j].cloneNode(true)));
+      }
+      pista.insertBefore(cabeza, pista.firstChild);
+      inicio = cuantos;
+    }
+
+    function tarjetasDePista() {
+      return pista.children;
+    }
+
+    function paso() {
+      var lista = tarjetasDePista();
+      if (lista.length < 2) return 0;
+      var estilo = window.getComputedStyle(pista);
+      var hueco = parseFloat(estilo.columnGap || estilo.gap) || 0;
+      return lista[0].getBoundingClientRect().width + hueco;
+    }
+
+    function actualizarAccesibilidad() {
+      var lista = tarjetasDePista();
+      var desde = inicio + indice;
+      for (var i = 0; i < lista.length; i++) {
+        var ficha = lista[i];
+        var clon = ficha.hasAttribute('data-clon');
+        var visible = !clon && i >= desde && i < desde + VISIBLES;
+        if (visible) {
+          ficha.removeAttribute('aria-hidden');
+        } else {
+          ficha.setAttribute('aria-hidden', 'true');
+        }
+        var boton = ficha.querySelector('.tg-ver');
+        if (boton) boton.tabIndex = visible ? 0 : -1;
+      }
+      if (anterior) anterior.disabled = !bucle;
+      if (siguiente) siguiente.disabled = !bucle;
+    }
+
+    function pintar(animar) {
+      if (!animar) pista.style.transition = 'none';
+      pista.style.transform =
+        'translateX(' + (-(inicio + indice) * paso()) + 'px)';
+      if (!animar) {
+        void pista.offsetWidth;
+        pista.style.transition = '';
+      }
+      actualizarAccesibilidad();
+    }
+
+    // Si el índice quedó en la zona clonada, salta sin animación a la posición
+    // equivalente (mismo contenido, sin retroceso visible).
+    function normalizar() {
+      if (indice >= 0 && indice < total) return;
+      indice = posicion(indice);
+      pintar(false);
+    }
+
+    function mover(delta) {
+      if (!bucle) return;
+      if (indice < 0 || indice >= total) {
+        // Un salto de bucle está en curso: se atiende al terminar la transición
+        // para no cortar la animación con un reposicionamiento a media pista.
+        pendiente = delta;
+        return;
+      }
+      indice += delta;
+      pintar(true);
+      // Con movimiento reducido no hay transición que espere: se reposiciona ya.
+      if (esReducido()) {
+        normalizar();
+        atenderPendiente();
+      }
+    }
+
+    function atenderPendiente() {
+      if (!pendiente) return;
+      var delta = pendiente;
+      pendiente = 0;
+      mover(delta);
+    }
+
+    function detener() {
+      if (temporizador !== null) {
+        window.clearInterval(temporizador);
+        temporizador = null;
+      }
+    }
+
+    function arrancar() {
+      detener();
+      if (!bucle || esReducido()) return;
+      temporizador = window.setInterval(function () { mover(1); }, INTERVALO);
+    }
+
+    var tope = Math.max(0, total - VISIBLES);
+    for (var i = 0; i < reales.length; i++) {
+      if (reales[i].classList.contains('is-activa')) {
+        // Se abre en una ventana de tarjetas reales, sin clones a la vista.
+        indice = Math.min(i, tope);
+        break;
+      }
+    }
+
+    clonar();
+
+    // El botón «Ver tendencia» de un clon delega en la tarjeta real equivalente;
+    // los clones no añaden controles ni entradas en el orden de tabulación.
+    pista.addEventListener('click', function (evento) {
+      var boton = evento.target.closest ? evento.target.closest('.tg-ver') : null;
+      if (!boton) return;
+      var ficha = boton.closest('.tg-linea');
+      if (!ficha || !ficha.hasAttribute('data-clon')) return;
+      for (var j = 0; j < reales.length; j++) {
+        if (reales[j].getAttribute('data-linea') === ficha.getAttribute('data-linea')) {
+          var original = reales[j].querySelector('.tg-ver');
+          if (original) original.click();
+          return;
+        }
+      }
+    });
+    pista.addEventListener('transitionend', function (evento) {
+      if (evento.target === pista && evento.propertyName === 'transform') {
+        normalizar();
+        atenderPendiente();
+      }
+    });
+    if (anterior) anterior.addEventListener('click', function () { mover(-1); });
+    if (siguiente) siguiente.addEventListener('click', function () { mover(1); });
+    carrusel.addEventListener('mouseenter', detener);
+    carrusel.addEventListener('mouseleave', arrancar);
+    carrusel.addEventListener('focusin', detener);
+    carrusel.addEventListener('focusout', function (evento) {
+      if (!carrusel.contains(evento.relatedTarget)) arrancar();
+    });
+    window.addEventListener('resize', function () {
+      normalizar();
+      pintar(false);
+      atenderPendiente();
+    });
+    if (reducido && reducido.addEventListener) {
+      reducido.addEventListener('change', function () {
+        if (esReducido()) {
+          detener();
+          normalizar();
+          atenderPendiente();
+        } else {
+          arrancar();
+        }
+      });
+    }
+
+    if (bucle) {
+      carrusel.classList.add('is-carrusel');
+      pintar(false);
+      arrancar();
+    }
   })();
 </script>
