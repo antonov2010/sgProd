@@ -24,6 +24,9 @@ VENTANA_INTENTOS_SEGUNDOS = 15 * 60
 MENSAJE_BLOQUEO = (
     "Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo."
 )
+MENSAJE_CREDENCIALES_INVALIDAS = (
+    "Acceso denegado: número de empleado y/o PIN incorrectos."
+)
 
 # Pestañas de la pantalla de matriz: la general (por defecto) y la asignación
 # vigente de la línea. Cualquier otro valor cae en la matriz general.
@@ -106,10 +109,7 @@ def login_empleado(request):
                     if _registrar_fallo(clave_intentos):
                         messages.error(request, MENSAJE_BLOQUEO)
                     else:
-                        messages.error(
-                            request,
-                            "Acceso denegado: número de empleado no registrado.",
-                        )
+                        messages.error(request, MENSAJE_CREDENCIALES_INVALIDAS)
                 else:
                     if not empleado.activo:
                         if _registrar_fallo(clave_intentos):
@@ -137,7 +137,7 @@ def login_empleado(request):
                         if _registrar_fallo(clave_intentos):
                             messages.error(request, MENSAJE_BLOQUEO)
                         else:
-                            messages.error(request, "Acceso denegado: PIN incorrecto.")
+                            messages.error(request, MENSAJE_CREDENCIALES_INVALIDAS)
     else:
         form = LoginForm()
 
