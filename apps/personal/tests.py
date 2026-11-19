@@ -16,7 +16,11 @@ from apps.calidad.models import Asignacion
 
 from . import services
 from .models import Empleado, Estacion, Linea, NivelHabilidad, Rol, SkillMatrix
-from .views import MAX_INTENTOS_FALLIDOS, MENSAJE_BLOQUEO
+from .views import (
+    MAX_INTENTOS_FALLIDOS,
+    MENSAJE_BLOQUEO,
+    MENSAJE_CREDENCIALES_INVALIDAS,
+)
 
 User = get_user_model()
 
@@ -369,7 +373,7 @@ class MatrizSeguridadTests(TestCase):
         self.assertIn("empleado_id", respuesta.json()["error"])
         self.assertEqual(SkillMatrix.objects.count(), 0)
 
-    def test_b07_falta_nivel_no_devuelve_500_en_matriz(self):
+    def test_b07_falta_nivel_no_devuelven_500_en_matriz(self):
         respuesta = self._post_json(
             {"empleado_id": self.operador_l3.id, "estacion_id": self.estacion_l3.id}
         )
@@ -583,7 +587,7 @@ class PinHasheadoTests(TestCase):
 
 
 class BloqueoPorIntentosTests(TestCase):
-    """B-02: cinco fallos bloquean el acceso temporalmente, sin perder el motivo."""
+    """B-02: cinco fallos bloquean el acceso temporalmente con mensaje genérico."""
 
     def setUp(self):
         # La cache local sobrevive entre pruebas: se limpia antes y después.
@@ -598,15 +602,22 @@ class BloqueoPorIntentosTests(TestCase):
         )
         self.url = reverse("personal:login")
 
-    def _intentar(self, pin):
+    def _intentar(self, pin, numero_empleado="SG-0002"):
         return self.client.post(
             self.url,
-            {"numero_empleado": "SG-0002", "pin": pin},
+            {"numero_empleado": numero_empleado, "pin": pin},
         )
+
+    def test_mensaje_generico_no_revela_si_el_empleado_existe(self):
+        resp_pin_malo = self._intentar("000000", numero_empleado="SG-0002")
+        resp_no_existe = self._intentar("000000", numero_empleado="SG-9999")
+
+        self.assertContains(resp_pin_malo, MENSAJE_CREDENCIALES_INVALIDAS)
+        self.assertContains(resp_no_existe, MENSAJE_CREDENCIALES_INVALIDAS)
 
     def test_cinco_fallos_bloquean_incluso_el_pin_correcto(self):
         respuesta = self._intentar("000000")
-        self.assertContains(respuesta, "PIN incorrecto")
+        self.assertContains(respuesta, MENSAJE_CREDENCIALES_INVALIDAS)
 
         for _ in range(MAX_INTENTOS_FALLIDOS - 1):
             respuesta = self._intentar("000000")
@@ -635,5 +646,5 @@ class BloqueoPorIntentosTests(TestCase):
         for _ in range(MAX_INTENTOS_FALLIDOS - 1):
             respuesta = self._intentar("000000")
 
-        self.assertContains(respuesta, "PIN incorrecto")
+        self.assertContains(respuesta, MENSAJE_CREDENCIALES_INVALIDAS)
         self.assertNotContains(respuesta, MENSAJE_BLOQUEO)
