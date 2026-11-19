@@ -1,242 +1,244 @@
 {% extends "base.html" %}
-
-{% block title %}Matriz de Competencias · SG-Prod{% endblock %}
-
+{% block title %}Matriz de Competencias SG-Prod{% endblock %}
 {% block nav_links %}
-  <span class="sg-nav-user">
-    {{ request.session.empleado_nombre }} ({{ request.session.numero_empleado }})
-  </span>
-  <a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
-  <a href="{% url 'personal:logout' %}">Cerrar sesión</a>
+<span class="sg-nav-user">
+    {{ request.session.empleado_nombre }}
+    ({{ request.session.numero_empleado }})
+</span>
+<a href="{% url 'dashboard:pantalla_jefe' %}" aria-current="page">Mi turno</a>
+<a href="{% url 'personal:logout' %}">Cerrar sesión</a>
 {% endblock %}
 
 {% block content %}
 <style>
-    main, .container, .container-fluid, .content-wrapper {
-        max-width: 100% !important;
-        width: 100% !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-    }
+main, .container, .container-fluid, .content-wrapper {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}
+.matriz-container {
+    padding: 1rem 0;
+    width: 100%;
+}
+.matriz-card {
+    background: var(--sg-card);
+    border: 1px solid var(--sg-line);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    width: 100%;
+    margin-bottom: 2rem;
+}
+.matriz-card--accent { border: 2px solid var(--sg-primary); }
+.matriz-card--proposal {
+    border: 2px dashed var(--sg-level-experto-fg);
+    background: var(--sg-level-experto-bg);
+}
+.matriz-card__head {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--sg-line);
+}
+.matriz-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+/* Solo la tabla general es larga: con altura máxima el thead queda fijo
+   mientras se recorren los operadores en tableta. */
+.matriz-table-wrapper--scroll {
+    max-height: 75vh;
+    overflow: auto;
+}
+.matriz-table {
+    width: 100%;
+    min-width: 1000px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+}
+.matriz-table th {
+    background-color: var(--sg-primary);
+    color: var(--sg-on-solid);
+    font-weight: 600;
+    text-align: center;
+    padding: 12px 10px;
+    border-bottom: 2px solid var(--sg-teal-dark);
+    white-space: nowrap;
+}
+.matriz-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+}
+.matriz-table thead th.col-empleado {
+    z-index: 5;
+}
+.matriz-table th.col-empleado {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background-color: var(--sg-primary);
+    min-width: 180px;
+    padding-left: 16px;
+}
+.matriz-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--sg-line-soft);
+    text-align: center;
+    vertical-align: middle;
+    background-color: var(--sg-card);
+}
+.matriz-table tr:nth-child(even) td {
+    background-color: var(--sg-row-alt);
+}
+.matriz-table tr:hover td {
+    background-color: var(--sg-row-hover);
+}
+.matriz-table td.cell-empleado,
+.matriz-table th.cell-empleado {
+    text-align: left;
+    font-weight: 600;
+    color: var(--sg-ink);
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 2px solid var(--sg-line);
+    border-bottom: 1px solid var(--sg-line-soft);
+    padding-left: 16px;
+    white-space: nowrap;
+    background-color: var(--sg-card);
+}
+.matriz-table tr:nth-child(even) th.cell-empleado {
+    background-color: var(--sg-row-alt);
+}
+.matriz-table tr:hover th.cell-empleado {
+    background-color: var(--sg-row-hover);
+}
+.sg-select-nivel {
+    display: inline-block;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 6px 10px;
+    font-family: var(--sg-font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 16px;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.sg-select-nivel:focus-visible {
+    outline: 3px solid var(--sg-thread);
+    outline-offset: 2px;
+}
+.matriz-estado {
+    margin: 0 0 0.75rem;
+    min-height: 1.4em;
+    font-size: 0.9rem;
+    color: var(--sg-bad-fg);
+}
+.matriz-estado:empty { display: none; }
 
-    .matriz-container {
-        padding: 1rem 0;
-        width: 100%;
-    }
-    .matriz-card {
-        background: var(--sg-card);
-        border: 1px solid var(--sg-line);
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-        width: 100%;
-        margin-bottom: 2rem;
-    }
-    .matriz-card--accent { border: 2px solid var(--sg-primary); }
-    .matriz-card--proposal {
-        border: 2px dashed var(--sg-level-experto-fg);
-        background: var(--sg-level-experto-bg);
-    }
-    .matriz-card__head {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--sg-line);
-    }
-    .matriz-table-wrapper {
-        width: 100%;
-        overflow-x: auto;
-    }
-    /* Solo la tabla general es larga: con altura máxima el thead queda fijo
-       mientras se recorren los operadores en tableta. */
-    .matriz-table-wrapper--scroll {
-        max-height: 75vh;
-        overflow: auto;
-    }
-    .matriz-table {
-        width: 100%;
-        min-width: 1000px;
-        border-collapse: separate;
-        border-spacing: 0;
-        font-size: 0.875rem;
-    }
-    .matriz-table th {
-        background-color: var(--sg-primary);
-        color: var(--sg-on-solid);
-        font-weight: 600;
-        text-align: center;
-        padding: 12px 10px;
-        border-bottom: 2px solid var(--sg-teal-dark);
-        white-space: nowrap;
-    }
-    .matriz-table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 4;
-    }
-    .matriz-table thead th.col-empleado {
-        z-index: 5;
-    }
-    .matriz-table th.col-empleado {
-        text-align: left;
-        position: sticky;
-        left: 0;
-        z-index: 3;
-        background-color: var(--sg-primary);
-        min-width: 180px;
-        padding-left: 16px;
-    }
-    .matriz-table td {
-        padding: 10px 8px;
-        border-bottom: 1px solid var(--sg-line-soft);
-        text-align: center;
-        vertical-align: middle;
-        background-color: var(--sg-card);
-    }
-    .matriz-table tr:nth-child(even) td {
-        background-color: var(--sg-row-alt);
-    }
-    .matriz-table tr:hover td {
-        background-color: var(--sg-row-hover);
-    }
-    .matriz-table td.cell-empleado,
-    .matriz-table th.cell-empleado {
-        text-align: left;
-        font-weight: 600;
-        color: var(--sg-ink);
-        position: sticky;
-        left: 0;
-        z-index: 2;
-        border-right: 2px solid var(--sg-line);
-        border-bottom: 1px solid var(--sg-line-soft);
-        padding-left: 16px;
-        white-space: nowrap;
-        background-color: var(--sg-card);
-    }
-    .matriz-table tr:nth-child(even) th.cell-empleado {
-        background-color: var(--sg-row-alt);
-    }
-    .matriz-table tr:hover th.cell-empleado {
-        background-color: var(--sg-row-hover);
-    }
+/* Barra de filtros de la matriz general (tamaño táctil en tableta). */
+.matriz-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    background: var(--sg-card);
+    border: 1px solid var(--sg-line);
+    border-radius: 12px;
+}
+.matriz-filtros__campo {
+    display: flex;
+    flex: 1 1 260px;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+.matriz-filtros label {
+    font: 600 0.9rem var(--sg-font-head);
+    color: var(--sg-muted);
+}
+.matriz-filtros input[type="search"] {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 0.8rem;
+    border: 2px solid var(--sg-line);
+    border-radius: 8px;
+    background: var(--sg-card);
+    color: var(--sg-ink);
+    font: 400 1rem var(--sg-font-body);
+}
+.matriz-filtros input[type="search"]:focus-visible {
+    outline: 3px solid var(--sg-thread);
+    outline-offset: 1px;
+}
+.matriz-filtros__check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+}
+.matriz-filtros__check input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--sg-primary);
+}
+.matriz-filtros__check label {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+.matriz-filtros .sg-cta { min-height: 44px; }
+.matriz-filtros__resumen {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--sg-muted);
+}
 
-    .sg-select-nivel {
-        display: inline-block;
-        min-height: 44px;
-        max-width: 100%;
-        padding: 6px 10px;
-        font-family: var(--sg-font-body);
-        font-size: 0.9rem;
-        font-weight: 600;
-        border-radius: 16px;
-        text-align: center;
-        white-space: nowrap;
-        cursor: pointer;
-    }
-    .sg-select-nivel:focus-visible {
-        outline: 3px solid var(--sg-thread);
-        outline-offset: 2px;
-    }
-    .matriz-estado { margin: 0 0 0.75rem; min-height: 1.4em; font-size: 0.9rem; color: var(--sg-bad-fg); }
-    .matriz-estado:empty { display: none; }
-
-    /* Barra de filtros de la matriz general (tamaño táctil en tableta). */
-    .matriz-filtros {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        gap: 0.75rem 1rem;
-        padding: 1rem 1.25rem;
-        margin-bottom: 1rem;
-        background: var(--sg-card);
-        border: 1px solid var(--sg-line);
-        border-radius: 12px;
-    }
-    .matriz-filtros__campo {
-        display: flex;
-        flex: 1 1 260px;
-        flex-direction: column;
-        gap: 0.35rem;
-        min-width: 0;
-    }
-    .matriz-filtros__label {
-        font: 600 0.9rem var(--sg-font-head);
-        color: var(--sg-muted);
-    }
-    .matriz-filtros input[type="search"] {
-        width: 100%;
-        min-height: 44px;
-        padding: 0 0.8rem;
-        border: 2px solid var(--sg-line);
-        border-radius: 8px;
-        background: var(--sg-card);
-        color: var(--sg-ink);
-        font: 400 1rem var(--sg-font-body);
-    }
-    .matriz-filtros input[type="search"]:focus-visible {
-        outline: 3px solid var(--sg-thread);
-        outline-offset: 1px;
-    }
-    .matriz-filtros__check {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        min-height: 44px;
-    }
-    .matriz-filtros__check input {
-        width: 22px;
-        height: 22px;
-        accent-color: var(--sg-primary);
-    }
-    .matriz-filtros__check label {
-        font-size: 0.95rem;
-        font-weight: 600;
-    }
-    .matriz-filtros .sg-cta { min-height: 44px; }
-    .matriz-filtros__resumen {
-        flex-basis: 100%;
-        margin: 0;
-        font-size: 0.9rem;
-        color: var(--sg-muted);
-    }
-
-    /* Pestañas: separan la asignación vigente de la matriz general. */
-    .matriz-tabs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-        margin: 0 0 1rem;
-        border-bottom: 2px solid var(--sg-line);
-    }
-    .matriz-tabs__tab {
-        display: inline-flex;
-        align-items: center;
-        min-height: 44px;
-        padding: 0.5rem 1rem;
-        border: 1px solid transparent;
-        border-bottom: 3px solid transparent;
-        border-radius: 8px 8px 0 0;
-        color: var(--sg-muted);
-        font: 600 0.95rem var(--sg-font-head);
-        text-decoration: none;
-    }
-    .matriz-tabs__tab:hover {
-        color: var(--sg-ink);
-        background: var(--sg-row-hover);
-    }
-    .matriz-tabs__tab[aria-selected="true"] {
-        color: var(--sg-primary);
-        border-color: var(--sg-line);
-        border-bottom-color: var(--sg-primary);
-        background: var(--sg-card);
-    }
-    .matriz-tabs__tab:focus-visible {
-        outline: 3px solid var(--sg-thread);
-        outline-offset: 2px;
-    }
-    .matriz-panel__nota {
-        margin: 0 0 1rem;
-        font-size: 0.9rem;
-        color: var(--sg-muted);
-    }
+/* Pestañas: separan la asignación vigente de la matriz general. */
+.matriz-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0 0 1rem;
+    border-bottom: 2px solid var(--sg-line);
+}
+.matriz-tabs__tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-bottom: 3px solid transparent;
+    border-radius: 8px 8px 0 0;
+    color: var(--sg-muted);
+    font: 600 0.95rem var(--sg-font-head);
+    text-decoration: none;
+}
+.matriz-tabs__tab:hover {
+    color: var(--sg-ink);
+    background: var(--sg-row-hover);
+}
+.matriz-tabs__tab[aria-selected="true"] {
+    color: var(--sg-primary);
+    border-color: var(--sg-line);
+    border-bottom-color: var(--sg-primary);
+    background: var(--sg-card);
+}
+.matriz-tabs__tab:focus-visible {
+    outline: 3px solid var(--sg-thread);
+    outline-offset: 2px;
+}
+.matriz-panel__nota {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    color: var(--sg-muted);
+}
 </style>
 
 <div class="matriz-container">
@@ -246,12 +248,10 @@
             <h1>Matriz de Competencias — {{ linea.nombre|default:"Sin Línea Asignada" }}</h1>
             <p class="sg-muted">Consulta y edición de niveles de habilidad por operador y estación de trabajo.</p>
         </div>
-        
         <div style="display: flex; gap: 10px; align-items: center;">
             <a href="?sugerir=1&turno={{ turno }}{% if consulta %}&q={{ consulta|urlencode }}{% endif %}{% if solo_faltantes %}&faltantes=1{% endif %}" class="sg-cta">
                 <span aria-hidden="true">⚡</span> Ajustes de distribución de línea
             </a>
-
             <a href="{% url 'dashboard:pantalla_jefe' %}" class="sg-cta sg-cta--ghost">
                 <span aria-hidden="true">←</span> Volver al Tablero
             </a>
@@ -261,7 +261,6 @@
     {% if not linea %}
         <div class="sg-empty">No hay información de línea asignada para este usuario.</div>
     {% else %}
-
         <p id="matriz-estado" class="matriz-estado" role="status" aria-live="polite"></p>
 
         <!-- TABLA 2: PROPUESTA SUGERIDA EDITABLE (fuera de las pestañas) -->
@@ -270,22 +269,21 @@
             {% csrf_token %}
             <input type="hidden" name="guardar_asignacion" value="1">
             <input type="hidden" name="turno" value="{{ turno }}">
-            
+            <input type="hidden" name="estaciones_manuales" id="estaciones-manuales" value="">
+
             <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--sg-level-experto-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <h2 style="margin: 0; color: var(--sg-level-experto-fg); font-size: 1.1rem; font-weight: 700;">
-                        <span aria-hidden="true">⚡</span> Propuesta de Distribución Sugerida (RF-1.3)
+                        <span aria-hidden="true">✨</span> Propuesta de Distribución Sugerida (RF-1.3)
                     </h2>
                     <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--sg-level-experto-fg);">
                         Revisa la recomendación o ajusta manualmente los operadores antes de guardar.
                     </p>
                 </div>
-
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--danger">
                         <span aria-hidden="true">✕</span> Cancelar sin guardar
                     </a>
-
                     <button type="submit" class="sg-cta sg-cta--ok">
                         <span aria-hidden="true">✓</span> Confirmar asignación
                     </button>
@@ -312,16 +310,17 @@
                             </th>
                             {% for item in sugerencia_propuesta.asignaciones %}
                                 <td style="background-color: var(--sg-card); {% if item.es_principiante %}border: 2px solid var(--sg-gap-border); background-color: var(--sg-gap-bg);{% endif %}">
-                                    <select name="estacion_{{ item.estacion.id }}"
-                                            aria-label="Operador propuesto para {{ item.estacion.nombre }}"
-                                            onchange="verificarPrincipianteSugerencia(this)"
-                                            style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--sg-level-experto-fg); font-size: 0.85rem; font-weight: 600; color: var(--sg-ink); background-color: var(--sg-card);">
+                                    <select
+                                        name="estacion_{{ item.estacion.id }}"
+                                        aria-label="Operador propuesto para {{ item.estacion.nombre }}"
+                                        onchange="verificarPrincipianteSugerencia(this)"
+                                        style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--sg-level-experto-fg); font-size: 0.85rem; font-weight: 600; color: var(--sg-ink); background-color: var(--sg-card);">
                                         <option value="" {% if item.descubierta %}selected{% endif %}>
                                             -- Descubierta --
                                         </option>
                                         {% for op in todos_los_operadores %}
                                             <option value="{{ op.id }}" {% if item.empleado and item.empleado.id == op.id %}selected{% endif %}>
-                                                {{ op.nombre }} {% if item.empleado and item.empleado.id == op.id %}(Sugerido){% endif %}
+                                                {{ op.nombre }}{% if item.empleado and item.empleado.id == op.id %} (Sugerido){% endif %}
                                             </option>
                                         {% endfor %}
                                     </select>
@@ -337,7 +336,7 @@
                                             </div>
                                             {% if item.instructor_apoyo %}
                                                 <div style="margin-top: 3px; font-size: 0.72rem; color: var(--sg-link);">
-                                                    <span aria-hidden="true">👨‍🏫</span> Apoyo: {{ item.instructor_apoyo.nombre }}
+                                                    <span aria-hidden="true">ℹ️</span> Apoyo: {{ item.instructor_apoyo.nombre }}
                                                 </div>
                                             {% endif %}
                                         {% endif %}
@@ -369,89 +368,94 @@
 
         {% if vista == 'matriz' %}
         <section id="panel-matriz" role="tabpanel" aria-labelledby="tab-matriz" tabindex="0">
-        <!-- TABLA 3: MATRIZ GENERAL DE HABILIDADES POR OPERADOR -->
-        <h2 class="sg-heading-teal" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">
-            Matriz General de Habilidades por Operador
-        </h2>
+            <!-- TABLA 3: MATRIZ GENERAL DE HABILIDADES POR OPERADOR -->
+            <h2 class="sg-heading-teal" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem;">
+                Matriz General de Habilidades por Operador
+            </h2>
 
-        <!-- FILTROS DE LA MATRIZ GENERAL (solo aplican a este panel) -->
-        <form method="get" action="{% url 'personal:matriz_competencias' %}" class="matriz-filtros" role="search">
-            <input type="hidden" name="vista" value="matriz">
-            <input type="hidden" name="turno" value="{{ turno }}">
-            <div class="matriz-filtros__campo">
-                <label for="filtro-q" class="matriz-filtros__label">Buscar operador</label>
-                <input type="search" id="filtro-q" name="q" value="{{ consulta }}"
-                       autocomplete="off" placeholder="Nombre o número de empleado">
-            </div>
-            <div class="matriz-filtros__check">
-                <input type="checkbox" id="filtro-faltantes" name="faltantes" value="1"
-                       {% if solo_faltantes %}checked{% endif %}>
-                <label for="filtro-faltantes">Solo operadores con estaciones sin nivel</label>
-            </div>
-            <button type="submit" class="sg-cta">Filtrar</button>
-            <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--ghost">Limpiar</a>
-            <p id="matriz-resumen" class="matriz-filtros__resumen" role="status" aria-live="polite"
-               data-total="{{ total_operadores }}">Mostrando {{ mostrados }} de {{ total_operadores }} operadores</p>
-        </form>
+            <!-- FILTROS DE LA MATRIZ GENERAL (solo aplican a este panel) -->
+            <form method="get" action="{% url 'personal:matriz_competencias' %}" class="matriz-filtros" role="search">
+                <input type="hidden" name="vista" value="matriz">
+                <input type="hidden" name="turno" value="{{ turno }}">
+                <div class="matriz-filtros__campo">
+                    <label for="filtro-q" class="matriz-filtros__label">Buscar operador</label>
+                    <input type="search" id="filtro-q" name="q" value="{{ consulta }}"
+                           autocomplete="off" placeholder="Nombre o número de empleado">
+                </div>
+                <div class="matriz-filtros__check">
+                    <input type="checkbox" id="filtro-faltantes" name="faltantes" value="1"
+                           {% if solo_faltantes %}checked{% endif %}>
+                    <label for="filtro-faltantes">Solo operadores con estaciones sin nivel</label>
+                </div>
+                <button type="submit" class="sg-cta">Filtrar</button>
+                <a href="{% url 'personal:matriz_competencias' %}?turno={{ turno }}" class="sg-cta sg-cta--ghost">Limpiar</a>
+                <p id="matriz-resumen" class="matriz-filtros__resumen"
+                   role="status" aria-live="polite"
+                   data-total="{{ total_operadores }}">Mostrando {{ mostrados }} de {{ total_operadores }} operadores</p>
+            </form>
 
-        <div class="matriz-card" id="matriz-tabla" {% if not matriz %}hidden{% endif %}>
-            <div class="matriz-table-wrapper matriz-table-wrapper--scroll">
-                <table class="matriz-table">
-                    <caption class="visually-hidden">
-                        Matriz general de habilidades por operador y estación.
-                    </caption>
-                    <thead>
-                        <tr>
-                            <th scope="col" class="col-empleado">Empleado / Operador</th>
-                            {% for est in estaciones %}
-                                <th scope="col">{{ est.nombre }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for fila in matriz %}
-                            <tr data-nombre="{{ fila.empleado.nombre }}"
-                                data-numero-empleado="{{ fila.empleado.numero_empleado }}">
-                                <th scope="row" class="cell-empleado">
-                                    <div style="font-size: 0.75rem; color: var(--sg-muted);">{{ fila.empleado.numero_empleado }}</div>
-                                    <div>{{ fila.empleado.nombre }}</div>
-                                </th>
+            <div class="matriz-card" id="matriz-tabla" {% if not matriz %}hidden{% endif %}>
+                <div class="matriz-table-wrapper matriz-table-wrapper--scroll">
+                    <table class="matriz-table">
+                        <caption class="visually-hidden">
+                            Matriz general de habilidades por operador y estación.
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col" class="col-empleado">Empleado / Operador</th>
                                 {% for est in estaciones %}
-                                    {% for col in fila.niveles %}
-                                        {% if col.estacion_id == est.id %}
-                                        <td>
-                                            <select class="sg-select-nivel sg-level {% if col.nivel == 'Instructor' %}sg-level--instructor{% elif col.nivel == 'Experto' %}sg-level--experto{% elif col.nivel == 'Autónomo' %}sg-level--autonomo{% elif col.nivel == 'Principiante' %}sg-level--principiante{% else %}sg-level--sinnivel{% endif %}"
-                                                    id="nivel-{{ fila.empleado.id }}-{{ est.id }}"
-                                                    aria-label="Nivel de {{ fila.empleado.nombre }} en {{ est.nombre }}"
-                                                    data-empleado-id="{{ fila.empleado.id }}"
-                                                    data-estacion-id="{{ col.estacion_id }}"
-                                                    data-valor-anterior="{{ col.nivel|default:'' }}"
-                                                    onchange="actualizarNivel(this)">
-                                                <option value="" {% if not col.nivel %}selected{% endif %}>Sin nivel</option>
-                                                <option value="Principiante" {% if col.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
-                                                <option value="Autónomo" {% if col.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
-                                                <option value="Experto" {% if col.nivel == 'Experto' %}selected{% endif %}>Experto</option>
-                                                <option value="Instructor" {% if col.nivel == 'Instructor' %}selected{% endif %}>Instructor</option>
-                                            </select>
-                                        </td>
-                                        {% endif %}
-                                    {% endfor %}
+                                    <th scope="col">{{ est.nombre }}</th>
                                 {% endfor %}
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for fila in matriz %}
+                                <tr data-nombre="{{ fila.empleado.nombre }}"
+                                    data-numero-empleado="{{ fila.empleado.numero_empleado }}">
+                                    <th scope="row" class="cell-empleado">
+                                        <div style="font-size: 0.75rem; color: var(--sg-muted);">{{ fila.empleado.numero_empleado }}</div>
+                                        <div>{{ fila.empleado.nombre }}</div>
+                                    </th>
+                                    {% for est in estaciones %}
+                                        {% for col in fila.niveles %}
+                                            {% if col.estacion_id == est.id %}
+                                                <td>
+                                                    <select
+                                                        class="sg-select-nivel sg-level {% if col.nivel == 'Instructor' %}sg-level--instructor{% elif col.nivel == 'Experto' %}sg-level--experto{% elif col.nivel == 'Autónomo' %}sg-level--autonomo{% elif col.nivel == 'Principiante' %}sg-level--principiante{% else %}sg-level--sinnivel{% endif %}"
+                                                        id="nivel-{{ fila.empleado.id }}-{{ est.id }}"
+                                                        aria-label="Nivel de {{ fila.empleado.nombre }} en {{ est.nombre }}"
+                                                        data-empleado-id="{{ fila.empleado.id }}"
+                                                        data-estacion-id="{{ col.estacion_id }}"
+                                                        data-valor-anterior="{{ col.nivel|default:'' }}"
+                                                        onchange="actualizarNivel(this)">
+                                                        <option value="" {% if not col.nivel %}selected{% endif %}>Sin nivel</option>
+                                                        <option value="Principiante" {% if col.nivel == 'Principiante' %}selected{% endif %}>Principiante</option>
+                                                        <option value="Autónomo" {% if col.nivel == 'Autónomo' %}selected{% endif %}>Autónomo</option>
+                                                        <option value="Experto" {% if col.nivel == 'Experto' %}selected{% endif %}>Experto</option>
+                                                        <option value="Instructor" {% if col.nivel == 'Instructor' %}selected{% endif %}>Instructor</option>
+                                                    </select>
+                                                </td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-        <div class="sg-empty" id="matriz-sin-resultados" {% if matriz %}hidden{% endif %}>
-            Ningún operador coincide con el filtro.
-        </div>
+
+            <div class="sg-empty" id="matriz-sin-resultados" {% if matriz %}hidden{% endif %}>
+                Ningún operador coincide con el filtro.
+            </div>
         </section>
+
         {% else %}
         <section id="panel-asignacion" role="tabpanel" aria-labelledby="tab-asignacion" tabindex="0">
             <p class="matriz-panel__nota">
                 La búsqueda y el filtro de faltantes aplican solo a la Matriz General de Habilidades.
             </p>
+
             <!-- TABLA 1: ASIGNACIÓN VIGENTE DE LA LÍNEA -->
             <div class="matriz-card matriz-card--accent">
                 <div class="matriz-card__head sg-panel-soft">
@@ -462,6 +466,7 @@
                         Estado oficial estático de los operadores asignados a cada estación de trabajo.
                     </p>
                 </div>
+
                 <div class="matriz-table-wrapper">
                     <table class="matriz-table">
                         <caption class="visually-hidden">
@@ -486,7 +491,6 @@
                                             <div style="font-weight: 700; color: var(--sg-ink); font-size: 0.9rem;">
                                                 {{ item.empleado_asignado.nombre }}
                                             </div>
-
                                             {% if item.es_principiante %}
                                                 <div style="margin-top: 6px; padding: 4px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.75rem; color: var(--sg-level-principiante-fg); font-weight: 700;">
                                                     {% if item.nivel == 'Principiante' %}
@@ -497,7 +501,7 @@
                                                 </div>
                                                 {% if item.instructor_apoyo %}
                                                     <div style="margin-top: 4px; font-size: 0.72rem; color: var(--sg-link);">
-                                                        <span aria-hidden="true">👨‍🏫</span> <strong>Instructor sugerido:</strong><br>
+                                                        <span aria-hidden="true">ℹ️</span> <strong>Instructor sugerido:</strong><br>
                                                         {{ item.instructor_apoyo.nombre }}
                                                     </div>
                                                 {% else %}
@@ -510,7 +514,6 @@
                                                     ({{ item.nivel|default:"Sin nivel" }})
                                                 </span>
                                             {% endif %}
-
                                         {% else %}
                                             <span class="sg-gap" style="font-weight: 700; font-size: 0.85rem;">
                                                 <span aria-hidden="true">⚠️</span> Descubierta
@@ -525,15 +528,16 @@
             </div>
         </section>
         {% endif %}
-
     {% endif %}
 </div>
 
 {{ mapa_niveles|json_script:"mapa-niveles" }}
 {{ instructores_apoyo|json_script:"instructores-apoyo" }}
+
 <script>
 const MAPA_NIVELES = JSON.parse(document.getElementById('mapa-niveles').textContent);
 const INSTRUCTORES = JSON.parse(document.getElementById('instructores-apoyo').textContent);
+const ESTACIONES_MANUALES = new Set();
 
 function mostrarEstadoMatriz(mensaje) {
     const estado = document.getElementById('matriz-estado');
@@ -559,7 +563,6 @@ function normalizarTextoMatriz(texto) {
 
 function aplicarFiltroMatriz() {
     if (!tablaMatriz || !resumenMatriz) return;
-
     const consulta = normalizarTextoMatriz(filtroMatriz ? filtroMatriz.value : '');
     const filas = Array.from(tablaMatriz.querySelectorAll('tbody tr'));
     const filtrando = consulta.length >= 3;
@@ -577,7 +580,6 @@ function aplicarFiltroMatriz() {
 
     const total = Number(resumenMatriz.dataset.total || filas.length);
     resumenMatriz.textContent = `Mostrando ${visibles} de ${total} operadores`;
-
     // Sin coincidencias se oculta la tabla y se muestra el estado vacío.
     tablaMatriz.hidden = visibles === 0;
     if (sinResultadosMatriz) sinResultadosMatriz.hidden = visibles > 0;
@@ -599,26 +601,32 @@ function emojiOculto(emoji) {
 
 function verificarPrincipianteSugerencia(selectElement) {
     const empleadoId = selectElement.value;
-    const estacionId = selectElement.name.replace('estacion_', ''); 
+    const estacionId = selectElement.name.replace('estacion_', '');
+
+    // Registrar que esta estación fue modificada manualmente por el jefe
+    ESTACIONES_MANUALES.add(estacionId);
+    const inputManuales = document.getElementById('estaciones-manuales');
+    if (inputManuales) {
+        inputManuales.value = Array.from(ESTACIONES_MANUALES).join(',');
+    }
+
     const clave = `${empleadoId}_${estacionId}`;
     const nivel = MAPA_NIVELES[clave] || '';
-    
     const tdPadre = selectElement.closest('td');
-    let alertaContainer = tdPadre.querySelector('.alerta-principiante-container');
 
+    let alertaContainer = tdPadre.querySelector('.alerta-principiante-container');
     if (!alertaContainer) {
         alertaContainer = document.createElement('div');
         alertaContainer.className = 'alerta-principiante-container';
         tdPadre.appendChild(alertaContainer);
     }
-
     alertaContainer.replaceChildren();
 
     // Alerta activa para 'Principiante' o cuando el nivel es vacío/Sin nivel y hay un operador seleccionado
     if ((nivel === 'Principiante' || nivel === '') && empleadoId !== '') {
         tdPadre.style.backgroundColor = 'var(--sg-gap-bg)';
         tdPadre.style.border = '2px solid var(--sg-gap-border)';
-        
+
         const textoEtiqueta = (nivel === 'Principiante') ? 'Operador Principiante' : 'Sin Nivel Asignado';
         const cajaAlerta = document.createElement('div');
         cajaAlerta.style.cssText = 'margin-top: 6px; padding: 3px 6px; background-color: var(--sg-level-principiante-bg); border: 1px solid var(--sg-level-principiante-border); border-radius: 4px; font-size: 0.73rem; color: var(--sg-level-principiante-fg); font-weight: 700;';
@@ -631,7 +639,7 @@ function verificarPrincipianteSugerencia(selectElement) {
         if (instructor) {
             const apoyo = document.createElement('div');
             apoyo.style.cssText = 'margin-top: 3px; font-size: 0.72rem; color: var(--sg-link);';
-            apoyo.append(emojiOculto('👨‍🏫'), document.createTextNode(`Apoyo: ${instructor}`));
+            apoyo.append(emojiOculto('ℹ️'), document.createTextNode(`Apoyo: ${instructor}`));
             alertaContainer.appendChild(apoyo);
         }
     } else {
