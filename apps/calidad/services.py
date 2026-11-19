@@ -17,12 +17,12 @@ from .models import Asignacion, CatalogoDefecto, DetalleDefecto, RegistroCalidad
 
 # Turnos de planta: (primera hora, número de horas). El turno 3 cruza la medianoche.
 TURNOS = {
-    1: (6, 8),   # 06:00 – 13:59
-    2: (14, 8),  # 14:00 – 21:59
-    3: (22, 8),  # 22:00 – 05:59
+    1: (6, 8),   # 06:00 - 13:59
+    2: (14, 8),  # 14:00 - 21:59
+    3: (22, 8),  # 22:00 - 05:59
 }
 
-# Tope de piezas por estación en una hora; evita errores de dedo (un cero de más).
+# Tope de piezas por estación en una hora; evita errores de dedo (un cero de más)
 MAX_PIEZAS_POR_HORA = 9999
 
 
@@ -43,11 +43,14 @@ class EstacionDelTurno:
     @property
     def requiere_apoyo(self):
         """Mismo criterio que la alerta de US-09: Principiante o sin nivel."""
-        return self.asignacion is not None and self.nivel in (None, NivelHabilidad.PRINCIPIANTE)
+        return self.asignacion is not None and self.nivel in (
+            None,
+            NivelHabilidad.PRINCIPIANTE,
+        )
 
 
 def horas_del_turno(turno):
-    """Horas del reloj (0–23) que forman el turno, en orden."""
+    """Horas del reloj (0-23) que forman el turno, en orden."""
     inicio, duracion = TURNOS[turno]
     return [(inicio + i) % 24 for i in range(duracion)]
 
@@ -67,8 +70,8 @@ def hora_actual():
 def fecha_de_la_guardia(turno, fecha=None):
     """Fecha de la guardia a la que pertenece un turno.
 
-    El turno 3 (22:00–05:59) pertenece al día en que inicia la guardia: de
-    madrugada (00:00–05:59) la guardia en curso es la que arrancó ayer a las
+    El turno 3 (22:00-05:59) pertenece al día en que inicia la guardia: de
+    madrugada (00:00-05:59) la guardia en curso es la que arrancó ayer a las
     22:00, y sus 8 horas viven en la misma ``Asignacion``. En cualquier otro
     momento la fecha de planta es la de hoy. Si ``fecha`` llega explícita (una
     corrección histórica), se respeta tal cual.
@@ -104,38 +107,46 @@ def _alerta_supervision(niveles, asignacion):
     )
 
 
-def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None):
+def guardar_asignacion_vigente(
+    linea, asignacion_vigente, fecha=None, turno=None, estaciones_manuales=None
+):
     """Persiste la asignación vigente de RF-1.3 como ``Asignacion`` del turno.
 
     US-08 exige que la asignación aceptada quede registrada. La matriz llama a
     esta función al confirmar la propuesta; la captura ya no escribe en base de
     datos al abrirse. Reglas:
-
     * las filas del turno se leen y bloquean dentro de la transacción, y se
       crean con ``get_or_create``: confirmar dos veces no duplica estaciones;
     * una estación que se envía sin operador queda descubierta: se borra su
       asignación si aún no tiene piezas; si ya las tiene, se conserva;
-    * una persona se asigna una sola vez por turno y gana la primera estación
-      por orden (la que el jefe vio primero y suele ser su cambio manual). Si
-      una estación posterior vuelve a traerla, esa estación queda descubierta y
-      se avisa; no se mueve ni se borra la asignación de otra estación para
-      hacerle espacio;
+    * una persona se asigna una sola vez por turno y gana su elección manual
+      (o la primera estación por orden si no hubo cambio manual). Si otra
+      estación vuelve a traerla, esa estación queda descubierta y se avisa; no
+      se mueve ni se borra la asignación de la estación ganadora para hacerle
+      espacio;
     * una estación con piezas capturadas conserva a su operador y se avisa;
     * un operador dado de baja no se asigna (RF-1.4).
 
-    ``asignacion_vigente``: ``{"<estacion_id>": "<empleado_id>" | None}``.
-
+    ``asignacion_vigente``: ``{"<estacion_id>": "<empleado_id>" | None}``
+    ``estaciones_manuales``: iterable opcional con los IDs de estaciones
+    editadas manualmente por el jefe en la matriz.
     Devuelve ``(estaciones, resultado, niveles, avisos)``; ``avisos`` son
     mensajes en español para el jefe sobre estaciones conservadas o conflictos.
     """
     turno = turno or turno_de_la_hora(hora_actual())
     fecha = fecha_de_la_guardia(turno, fecha)
     asignacion_vigente = asignacion_vigente or {}
-    estaciones = list(Estacion.objects.filter(linea=linea).order_by("orden"))
-    operadores = {e.id: e for e in obtener_personal_presente(linea)}
+    manuales = {str(eid) for eid in (estaciones_manuales or ())}
 
+    estaciones = list(Estacion.objects.filter(linea=linea).order_by("orden"))
+    estaciones_ordenadas = sorted(
+        estaciones,
+        key=lambda e: (0 if str(e.id) in manuales else 1, e.orden),
+    )
+    operadores = {e.id: e for e in obtener_personal_presente(linea)}
     resultado = {}
     avisos = []
+
     with transaction.atomic():
         # La lectura va dentro de la transacción y con bloqueo para que dos
         # confirmaciones simultáneas no creen filas duplicadas.
@@ -146,12 +157,12 @@ def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None
             .select_related("empleado")
             .order_by("id")
         }
-        # Ganadores del turno: ``empleado_id -> asignación`` de la primera
-        # estación por orden. Solo crece; una estación posterior nunca mueve ni
-        # borra la asignación de otra estación para "hacer espacio".
+        # Ganadores del turno: ``empleado_id -> asignación de la estación
+        # ganadora``. Solo crece; una estación posterior nunca mueve ni borra
+        # la asignación de otra estación para "hacer espacio".
         ganadores = {}
 
-        for estacion in estaciones:
+        for estacion in estaciones_ordenadas:
             asignacion = existentes.get(estacion.id)
             vigente_id = asignacion_vigente.get(str(estacion.id))
             operador = operadores.get(int(vigente_id)) if vigente_id else None
@@ -200,8 +211,8 @@ def guardar_asignacion_vigente(linea, asignacion_vigente, fecha=None, turno=None
                 resultado[estacion.id] = asignacion
                 continue
 
-            # Gana la primera estación por orden: si una estación posterior trae
-            # a alguien ya asignado, queda descubierta y se avisa al jefe.
+            # Gana la estación manual o la primera por orden: si otra estación
+            # trae a alguien ya asignado, queda descubierta y se avisa al jefe.
             anterior = ganadores.get(operador.id)
             if anterior is not None:
                 if asignacion is not None:
@@ -268,7 +279,8 @@ def estaciones_para_capturar(linea, turno, hora, fecha=None):
     registros = {
         r.asignacion_id: r
         for r in RegistroCalidadHorario.objects.filter(
-            asignacion__in=[a for a in asignaciones.values() if a], hora=hora
+            hora=hora,
+            asignacion__in=[a for a in asignaciones.values() if a],
         ).prefetch_related("defectos")
     }
     filas = []
@@ -280,7 +292,9 @@ def estaciones_para_capturar(linea, turno, hora, fecha=None):
             EstacionDelTurno(
                 estacion=estacion,
                 asignacion=asignacion,
-                nivel=niveles.get((asignacion.empleado_id, estacion.id)) if asignacion else None,
+                nivel=niveles.get((asignacion.empleado_id, estacion.id))
+                if asignacion
+                else None,
                 registro=registro,
                 defecto_id=primer_defecto.defecto_id if primer_defecto else None,
             )
@@ -320,7 +334,14 @@ def _piezas(valor, campo):
 
 
 def registrar_captura(
-    linea, asignacion_id, hora, aceptadas, rechazadas, retrabajo, defecto_id=None, fecha=None
+    linea,
+    asignacion_id,
+    hora,
+    aceptadas,
+    rechazadas,
+    retrabajo,
+    defecto_id=None,
+    fecha=None,
 ):
     """Guarda (o corrige) las piezas de una estación en una hora del turno."""
     # El turno en curso se resuelve con el reloj: de madrugada el turno 3 sigue
@@ -328,6 +349,7 @@ def registrar_captura(
     turno_actual = turno_de_la_hora(hora_actual())
     fecha_guardia = fecha_de_la_guardia(turno_actual)
     fecha = fecha or fecha_guardia
+
     valores = {
         "piezas_aceptadas": _piezas(aceptadas, "Aceptadas"),
         "piezas_rechazadas": _piezas(rechazadas, "Rechazadas"),
@@ -342,13 +364,17 @@ def registrar_captura(
     defecto = None
     if valores["piezas_rechazadas"] > 0:
         if not defecto_id:
-            raise CapturaInvalida("Selecciona un motivo de defecto cuando haya piezas rechazadas.")
+            raise CapturaInvalida(
+                "Selecciona un motivo de defecto cuando haya piezas rechazadas."
+            )
         defecto = CatalogoDefecto.objects.filter(pk=defecto_id).first()
         if defecto is None:
             raise CapturaInvalida("El motivo de defecto seleccionado no es válido.")
 
     asignacion = (
-        Asignacion.objects.filter(pk=asignacion_id, estacion__linea=linea, fecha=fecha)
+        Asignacion.objects.filter(
+            pk=asignacion_id, estacion__linea=linea, fecha=fecha
+        )
         .select_related("estacion", "empleado")
         .first()
     )
@@ -362,7 +388,9 @@ def registrar_captura(
     # aplica a la fecha de la guardia en curso; una fecha histórica sigue siendo
     # corregible.
     if fecha == fecha_guardia and asignacion.turno != turno_actual:
-        raise CapturaInvalida("Ese turno ya está cerrado; solo se captura el turno en curso.")
+        raise CapturaInvalida(
+            "Ese turno ya está cerrado; solo se captura el turno en curso."
+        )
 
     with transaction.atomic():
         registro = (
@@ -380,7 +408,7 @@ def registrar_captura(
                 setattr(registro, campo, valor)
             registro.save(update_fields=list(valores))
 
-        # Sincronizar el motivo de defecto asociado a la estación y al empleado
+        # Sincronizar el motivo de defecto asociado a la estación y al registro.
         registro.defectos.all().delete()
         if defecto is not None:
             DetalleDefecto.objects.create(

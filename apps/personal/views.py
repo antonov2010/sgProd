@@ -231,8 +231,19 @@ def matriz_competencias(request):
                         val if (val and val in empleados_validos) else None
                     )
 
+        manuales_raw = request.POST.get("estaciones_manuales", "")
+        estaciones_manuales = {
+            eid.strip()
+            for eid in manuales_raw.split(",")
+            if eid.strip() in estaciones_validas
+        }
+
         _, guardadas, _, avisos = calidad_services.guardar_asignacion_vigente(
-            linea_actual, asignaciones_guardadas, fecha=fecha, turno=turno
+            linea_actual,
+            asignaciones_guardadas,
+            fecha=fecha,
+            turno=turno,
+            estaciones_manuales=estaciones_manuales,
         )
         asignadas = sum(1 for asignacion in guardadas.values() if asignacion)
         messages.success(
