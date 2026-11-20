@@ -660,3 +660,87 @@ def test_la_fecha_por_defecto_del_modelo_es_la_de_planta(planta, tarde_en_planta
         empleado=planta["operadores"][0], estacion=planta["estaciones"][0], turno=2
     )
     assert asignacion.fecha == tarde_en_planta
+
+
+# --- SGPRO-33: recorrido completo de una guardia del turno 3 ------------------
+# Regresión de los pasos de reproducción de la tarea: capturar 22:00 y 23:00,
+# abrir la captura después de medianoche y revisar que la guardia siga completa.
+# El arreglo llegó en el PR #29 (fecha_de_la_guardia); estas pruebas lo fijan.
+# Horas de Tijuana en enero (UTC-8) expresadas en UTC.
+
+INICIO_GUARDIA = datetime.date(2030, 1, 15)
+GUARDIA_2230 = datetime.datetime(2030, 1, 16, 6, 30, tzinfo=datetime.timezone.utc)   # 15-ene 22:30
+GUARDIA_2330 = datetime.datetime(2030, 1, 16, 7, 30, tzinfo=datetime.timezone.utc)   # 15-ene 23:30
+GUARDIA_0030 = datetime.datetime(2030, 1, 16, 8, 30, tzinfo=datetime.timezone.utc)   # 16-ene 00:30
+GUARDIA_0530 = datetime.datetime(2030, 1, 16, 13, 30, tzinfo=datetime.timezone.utc)  # 16-ene 05:30
+GUARDIA_0630 = datetime.datetime(2030, 1, 16, 14, 30, tzinfo=datetime.timezone.utc)  # 16-ene 06:30
+
+
+@pytest.fixture
+def reloj_de_guardia(monkeypatch):
+    """Mueve el reloj de planta; la hora actual sale del mismo reloj simulado."""
+    monkeypatch.setattr(services, "hora_actual", lambda: timezone.localtime().hour)
+
+    def mover(ahora):
+        monkeypatch.setattr(timezone, "now", lambda: ahora)
+
+    return mover
+
+
+@pytest.fixture
+def guardia_con_22_y_23(client, planta, reloj_de_guardia):
+    """Paso 1 de SGPRO-33: la guardia captura sus horas 22:00 y 23:00."""
+    reloj_de_guardia(GUARDIA_2230)
+    entrar(client, "SG-0002")
+    confirmar_asignacion(client, planta)
+    asignacion = Asignacion.objects.get(estacion=planta["estaciones"][0], turno=3)
+    assert capturar(client, asignacion, hora=22, aceptadas=50, rechazadas=0).status_code == 201
+    reloj_de_guardia(GUARDIA_2330)
+    assert capturar(client, asignacion, hora=23, aceptadas=60, rechazadas=0).status_code == 201
+    return asignacion
+
+
+def horas_del_historial(html):
+    historial = html.split('id="historial"')[1].split("</tbody>")[0]
+    return re.findall(r"<td[^>]*>\s*(\d\d:00)\s*</td>", historial)
+
+
+def test_sgpro33_tras_medianoche_el_historial_conserva_22_y_23(
+    client, planta, reloj_de_guardia, guardia_con_22_y_23
+):
+    # Pasos 2 y 3: después de medianoche abrir /calidad/captura/ en el turno 3.
+    reloj_de_guardia(GUARDIA_0030)
+    html = client.get(reverse("calidad:captura")).content.decode()
+
+    assert horas_del_historial(html) == ["23:00", "22:00"]
+    assert Asignacion.objects.count() == 8
+    assert set(Asignacion.objects.values_list("fecha", "turno")) == {(INICIO_GUARDIA, 3)}
+
+
+def test_sgpro33_de_madrugada_se_captura_y_corrige_la_misma_guardia(
+    client, planta, reloj_de_guardia, guardia_con_22_y_23
+):
+    reloj_de_guardia(GUARDIA_0030)
+    assert capturar(client, guardia_con_22_y_23, hora=0, aceptadas=70, rechazadas=0).status_code == 201
+    corregida = capturar(client, guardia_con_22_y_23, hora=22, aceptadas=55, rechazadas=0)
+    assert corregida.status_code == 200
+    reloj_de_guardia(GUARDIA_0530)
+    assert capturar(client, guardia_con_22_y_23, hora=5, aceptadas=80, rechazadas=0).status_code == 201
+
+    registros = RegistroCalidadHorario.objects.filter(asignacion=guardia_con_22_y_23)
+    assert sorted(registros.values_list("hora", flat=True)) == [0, 5, 22, 23]
+    assert registros.get(hora=22).piezas_aceptadas == 55
+    assert Asignacion.objects.count() == 8
+
+
+def test_sgpro33_a_las_6_empieza_otra_guardia_y_la_anterior_queda_intacta(
+    client, planta, reloj_de_guardia, guardia_con_22_y_23
+):
+    reloj_de_guardia(GUARDIA_0630)
+    confirmar_asignacion(client, planta)
+
+    assert set(Asignacion.objects.filter(turno=1).values_list("fecha", flat=True)) == {
+        datetime.date(2030, 1, 16)
+    }
+    assert Asignacion.objects.filter(turno=3, fecha=INICIO_GUARDIA).count() == 8
+    assert RegistroCalidadHorario.objects.filter(asignacion=guardia_con_22_y_23).count() == 2

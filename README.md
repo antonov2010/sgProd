@@ -294,12 +294,17 @@ El Jefe de Línea registra cada hora las piezas **Aceptadas**, **Rechazadas** y
 Reglas:
 
 - Turnos: 1 = 06:00–13:59, 2 = 14:00–21:59, 3 = 22:00–05:59.
+- **El turno 3 pertenece a la fecha en que inicia la guardia (22:00)**
+  (SGPRO-33). De 00:00 a 05:59 la captura, el historial y las asignaciones
+  siguen usando la fecha del día anterior, así que las 8 horas de la guardia
+  se ven y capturan juntas y no se duplican estaciones. La regla vive en
+  `fecha_de_la_guardia()` (`apps/calidad/services.py`).
 - Guardar otra vez la misma hora **corrige** el registro; no lo duplica.
 - Solo se capturan estaciones de la línea del jefe y horas del turno en curso.
-- Al abrir la captura, la asignación vigente de la matriz se guarda como
-  `Asignacion` del día y turno (con `alerta_supervision` si el operador es
-  Principiante o no tiene nivel). Una estación que ya tiene piezas capturadas
-  conserva a su operador.
+- Al **confirmar** la asignación en la matriz se guarda como `Asignacion` del
+  turno (con `alerta_supervision` si el operador es Principiante o no tiene
+  nivel); abrir la captura solo la lee. Una estación que ya tiene piezas
+  capturadas conserva a su operador.
 - Los registros guardados aparecen en **Registros del turno**, al pie de la
   pantalla, y en el Admin (*Calidad → Registros de calidad horario*).
 - Si una estación tiene piezas **Rechazadas**, el motivo de defecto es
