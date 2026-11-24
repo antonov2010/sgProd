@@ -1,30 +1,73 @@
-from django.core.management.base import BaseCommand
-from apps.calidad.models import CatalogoDefecto
+import json
+from pathlib import Path
 
-CATALOGO_INICIAL = [
-    ("DEF-01", "Dimensión fuera de tolerancia"),
-    ("DEF-02", "Daño superficial / Rayadura"),
-    ("DEF-03", "Ensamble incompleto o suelto"),
-    ("DEF-04", "Falla de soldadura / Unión"),
-    ("DEF-05", "Material contaminado o deformado"),
-    ("DEF-06", "Etiquetado o marcado incorrecto"),
-]
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
+
+from apps.calidad.models import CatalogoDefecto
 
 
 class Command(BaseCommand):
-    help = "Precarga el catálogo estandarizado de motivos de defecto (RF-2.2)."
+    help = "Precarga el catálogo estandarizado de motivos de defecto desde demo_sgprod.json (RF-2.2)."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Sobrescribe la descripción de los defectos existentes si difiere del JSON.",
+        )
 
     def handle(self, *args, **options):
+        force = options["force"]
+        json_path = Path(settings.BASE_DIR) / "data" / "seed" / "demo_sgprod.json"
+
+        if not json_path.exists():
+            raise CommandError(f"No se encontró el archivo de catálogo en: {json_path}")
+
+        with json_path.open(encoding="utf-8") as f:
+            data = json.load(f)
+
+        defectos = data.get("defectos", [])
         creados = 0
-        for codigo, descripcion in CATALOGO_INICIAL:
-            _, created = CatalogoDefecto.objects.update_or_create(
-                codigo=codigo,
-                defaults={"descripcion": descripcion},
-            )
-            if created:
-                creados += 1
+        actualizados = 0
+        omitidos = 0
+
+        for item in defectos:
+            codigo = item["codigo"]
+            descripcion = item["descripcion"]
+
+            if force:
+                existente = CatalogoDefecto.objects.filter(codigo=codigo).first()
+                if existente is None:
+                    CatalogoDefecto.objects.create(
+                        codigo=codigo,
+                        descripcion=descripcion,
+                    )
+                    creados += 1
+                elif existente.descripcion != descripcion:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"Actualizando {codigo}: '{existente.descripcion}' -> '{descripcion}'"
+                        )
+                    )
+                    existente.descripcion = descripcion
+                    existente.save(update_fields=["descripcion"])
+                    actualizados += 1
+                else:
+                    omitidos += 1
+            else:
+                _, created = CatalogoDefecto.objects.get_or_create(
+                    codigo=codigo,
+                    defaults={"descripcion": descripcion},
+                )
+                if created:
+                    creados += 1
+                else:
+                    omitidos += 1
+
         self.stdout.write(
             self.style.SUCCESS(
-                f"Catálogo listo: {len(CATALOGO_INICIAL)} defectos ({creados} nuevos)."
+                f"Catálogo listo: {len(defectos)} defectos en JSON "
+                f"({creados} nuevos, {actualizados} actualizados, {omitidos} sin cambios)."
             )
         )
