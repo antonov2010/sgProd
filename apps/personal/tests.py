@@ -585,6 +585,20 @@ class PinHasheadoTests(TestCase):
         self.assertEqual(respuesta.status_code, 302)
         self.assertEqual(self.client.session["empleado_id"], self.empleado.id)
 
+    def test_admin_empleado_muestra_pin_hash_como_solo_lectura(self):
+        usuario = crear_usuario("admin-pin", superusuario=True)
+        self.client.force_login(usuario)
+
+        respuesta = self.client.get(
+            reverse("admin:personal_empleado_change", args=[self.empleado.pk])
+        )
+        contenido = respuesta.content.decode()
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn("pin_hash", contenido)
+        self.assertNotIn('name="pin_hash"', contenido)
+        self.assertNotIn("123456", contenido)
+
 
 class BloqueoPorIntentosTests(TestCase):
     """B-02: cinco fallos bloquean el acceso temporalmente con mensaje genérico."""
