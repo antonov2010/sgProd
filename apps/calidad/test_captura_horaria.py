@@ -482,6 +482,34 @@ def test_no_captura_un_turno_ya_cerrado(jefe_en_captura, planta, monkeypatch):
     assert not RegistroCalidadHorario.objects.exists()
 
 
+def test_sgpro34_desde_el_turno_2_no_se_reescribe_una_hora_del_turno_1(
+    jefe_en_captura, planta, monkeypatch
+):
+    """SGPRO-34: un POST con la asignación del turno 1 no altera lo ya capturado.
+
+    Pasos de la tarea: estando en turno 2, enviar a ``/calidad/captura/guardar/``
+    el ``asignacion_id`` de una estación del turno 1 con ``hora: 7``. Debe
+    responder 400 y dejar intacto el registro, para no alterar FPY ni bonos.
+    """
+    asignacion = Asignacion.objects.filter(
+        estacion__linea=planta["linea"], turno=1
+    ).first()
+    # 09:00, turno 1: la hora 7 se captura de forma legítima, con un rechazo.
+    assert capturar(jefe_en_captura, asignacion, hora=7, aceptadas=100, rechazadas=2).status_code == 201
+
+    monkeypatch.setattr(services, "hora_actual", lambda: 15)  # 15:00, turno 2
+    respuesta = capturar(jefe_en_captura, asignacion, hora=7, aceptadas=10, rechazadas=0)
+
+    assert respuesta.status_code == 400
+    assert (
+        respuesta.json()["error"]
+        == "Ese turno ya está cerrado; solo se captura el turno en curso."
+    )
+    registro = RegistroCalidadHorario.objects.get(asignacion=asignacion, hora=7)
+    assert (registro.piezas_aceptadas, registro.piezas_rechazadas) == (100, 2)
+    assert registro.defectos.count() == 1  # el motivo del rechazo tampoco se borró
+
+
 def test_no_captura_estaciones_de_otra_linea(jefe_en_captura, planta):
     ajena = Asignacion.objects.create(
         empleado=planta["ajeno"], estacion=planta["estacion_ajena"], turno=1

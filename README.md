@@ -311,6 +311,10 @@ Reglas:
   obligatorio (RF-2.2). El catálogo se precarga con
   `python manage.py seed_defectos` (o con `seed_demo`) y se administra en
   *Calidad → Catálogo de defectos*.
+- **Un turno ya cerrado no se puede capturar ni corregir** (SGPRO-34): el
+  servidor compara el turno de la asignación con el turno en curso según el
+  reloj y responde *«Ese turno ya está cerrado; solo se captura el turno en
+  curso.»*, así un envío manipulado no altera el FPY ni los bonos.
 
 ### 5.5 Tablero gerencial y bono por cero defectos (US-13 a US-15)
 
