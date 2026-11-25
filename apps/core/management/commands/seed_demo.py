@@ -351,38 +351,54 @@ class Command(BaseCommand):
         Linea.objects.bulk_update(lineas_ordenadas, ["jefe_linea"])
 
     def _garantizar_principiante_por_linea(self, lineas, habilidades):
-        """Deja al menos un Principiante por línea en una estación de su línea.
+        """Deja al menos un Principiante y un Instructor por línea en su primera estación.
 
         La matriz se llena con ``random.sample`` sobre todos los operadores, así
-        que una línea puede quedar sin Principiante. US-09 necesita mostrar la
-        alerta siempre: se asigna de forma explícita y determinista al primer
-        operador de la línea (por número) en su primera estación (por orden).
+        que una línea puede quedar sin Principiante o sin Instructor en esa
+        estación. US-09 necesita mostrar la alerta «Apoyo: Instructor» siempre:
+        se asigna de forma explícita y determinista al primer operador de la
+        línea como Principiante y se asegura un Instructor de la misma línea en
+        esa estación.
         """
         for linea in sorted(lineas, key=lambda item: item.nombre):
-            operador = (
+            operadores = list(
                 Empleado.objects.filter(
                     linea=linea, activo=True, rol__tipo_rol="operador"
-                )
-                .order_by("numero_empleado")
-                .first()
+                ).order_by("numero_empleado")
             )
             estacion = Estacion.objects.filter(linea=linea).order_by("orden").first()
-            if operador is None or estacion is None:
+            if not operadores or estacion is None:
                 continue
+
+            principiante = operadores[0]
             SkillMatrix.objects.update_or_create(
-                empleado=operador,
+                empleado=principiante,
                 estacion=estacion,
                 defaults={"nivel": NivelHabilidad.PRINCIPIANTE},
             )
-            habilidades[(operador.id, estacion.id)] = NivelHabilidad.PRINCIPIANTE
+            habilidades[(principiante.id, estacion.id)] = NivelHabilidad.PRINCIPIANTE
+
+            tiene_instructor = SkillMatrix.objects.filter(
+                empleado__in=operadores,
+                estacion=estacion,
+                nivel=NivelHabilidad.INSTRUCTOR,
+            ).exists()
+            if not tiene_instructor and len(operadores) > 1:
+                instructor = operadores[1]
+                SkillMatrix.objects.update_or_create(
+                    empleado=instructor,
+                    estacion=estacion,
+                    defaults={"nivel": NivelHabilidad.INSTRUCTOR},
+                )
+                habilidades[(instructor.id, estacion.id)] = NivelHabilidad.INSTRUCTOR
 
     def _datos_us15(self, lineas, estaciones, defectos):
         """Crea 14 días de asignaciones y calidad con casos controlados.
 
         Cada línea tiene tres operadores identificables:
-        - el primero nunca tiene piezas rechazadas;
-        - el segundo tiene un defecto hace 10 días (fuera de una ventana de 7);
-        - el tercero tiene un defecto ayer (dentro de cualquier ventana).
+- el primero nunca tiene piezas rechazadas;
+- el segundo tiene un defecto hace 10 días (fuera de una ventana de 7);
+- el tercero tiene un defecto ayer (dentro de cualquier ventana).
         Así se puede comprobar la lista y el cambio de periodo sin tocar código.
         """
         if not defectos:
