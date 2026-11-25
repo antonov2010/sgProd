@@ -324,7 +324,7 @@ def historial_del_turno(linea, turno, fecha=None):
 def _piezas(valor, campo):
     try:
         piezas = int(valor)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):  # OverflowError: int(inf)
         raise CapturaInvalida(f"{campo}: escribe un número entero.") from None
     if piezas < 0:
         raise CapturaInvalida(f"{campo}: no puede ser negativo.")
@@ -357,7 +357,7 @@ def registrar_captura(
     }
     try:
         hora = int(hora)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):  # OverflowError: int(inf)
         raise CapturaInvalida("Hora no válida.") from None
 
     # Validación RF-2.2: motivo obligatorio si rechazadas > 0
