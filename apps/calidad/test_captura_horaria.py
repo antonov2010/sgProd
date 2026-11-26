@@ -519,6 +519,65 @@ def test_no_captura_estaciones_de_otra_linea(jefe_en_captura, planta):
     assert not RegistroCalidadHorario.objects.exists()
 
 
+# --- SGPRO-35: cuerpos inválidos responden 400 -------------------------------
+
+
+def _cuerpo_valido(planta):
+    asignacion = Asignacion.objects.filter(estacion__linea=planta["linea"]).first()
+    return json.dumps(
+        {"asignacion_id": asignacion.id, "hora": HORA, "aceptadas": 10, "rechazadas": 0, "retrabajo": 0}
+    )
+
+
+@pytest.mark.parametrize(
+    "nombre, armar, mensaje",
+    [
+        # Pasos de la tarea SGPRO-35.
+        ("lista", lambda base: "[]", "El cuerpo debe ser un objeto JSON."),
+        ("null", lambda base: "null", "El cuerpo debe ser un objeto JSON."),
+        ("id texto", lambda base: '{"asignacion_id": "abc"}', "asignacion_id debe ser un entero positivo."),
+        # Variantes que también llegaban como 500.
+        ("id superíndice", lambda base: base.replace('"asignacion_id": ', '"asignacion_id": "²", "x": '),
+         "asignacion_id debe ser un entero positivo."),
+        ("hora Infinity", lambda base: base.replace(f'"hora": {HORA}', '"hora": Infinity'), None),
+        ("hora 1e400", lambda base: base.replace(f'"hora": {HORA}', '"hora": 1e400'), None),
+        ("aceptadas Infinity", lambda base: base.replace('"aceptadas": 10', '"aceptadas": Infinity'), None),
+        ("aceptadas -Infinity", lambda base: base.replace('"aceptadas": 10', '"aceptadas": -Infinity'), None),
+    ],
+)
+def test_sgpro35_un_cuerpo_invalido_responde_400_y_no_500(
+    jefe_en_captura, planta, nombre, armar, mensaje
+):
+    """SGPRO-35: la captura valida el cuerpo y responde 400 con un mensaje claro."""
+    jefe_en_captura.raise_request_exception = False
+    respuesta = jefe_en_captura.post(
+        reverse("calidad:guardar_captura"),
+        armar(_cuerpo_valido(planta)),
+        content_type="application/json",
+    )
+
+    assert respuesta.status_code == 400, nombre
+    error = respuesta.json()["error"]
+    assert error, nombre
+    if mensaje:
+        assert error == mensaje
+    assert not RegistroCalidadHorario.objects.exists()
+
+
+@pytest.mark.parametrize("valor", [float("inf"), float("-inf"), float("nan")])
+def test_sgpro35_el_servicio_rechaza_numeros_no_finitos(valor):
+    """Defensa en el servicio para entradas que no pasan por la vista (API, ERP)."""
+    with pytest.raises(services.CapturaInvalida):
+        services._piezas(valor, "Aceptadas")
+
+
+def test_sgpro35_un_cuerpo_valido_sigue_guardando(jefe_en_captura, planta):
+    respuesta = jefe_en_captura.post(
+        reverse("calidad:guardar_captura"), _cuerpo_valido(planta), content_type="application/json"
+    )
+    assert respuesta.status_code == 201
+
+
 # --- Criterio 3: cada control tiene al menos 56 px -------------------------
 
 
