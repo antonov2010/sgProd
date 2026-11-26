@@ -662,3 +662,90 @@ class BloqueoPorIntentosTests(TestCase):
 
         self.assertContains(respuesta, MENSAJE_CREDENCIALES_INVALIDAS)
         self.assertNotContains(respuesta, MENSAJE_BLOQUEO)
+
+        class MatrizValoresManipuladosTests(TestCase):"""SGPRO-23: valores manipulados o no numéricos en el POST de matriz no provocan 500."""
+
+    def setUp(self):
+        self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+        self.linea_3 = Linea.objects.create(nombre="Línea 3")
+        self.linea_4 = Linea.objects.create(nombre="Línea 4")
+
+        self.corte = Estacion.objects.create(linea=self.linea_3, nombre="Corte", orden=1)
+        self.soldadura = Estacion.objects.create(
+            linea=self.linea_3, nombre="Soldadura", orden=2
+        )
+        self.otra_estacion = Estacion.objects.create(
+            linea=self.linea_4, nombre="Pintura", orden=1
+        )
+
+        self.jefe = crear_empleado(
+            numero_empleado="SG-0003",
+            nombre="Jefe L3",
+            rol=self.rol_jefe,
+            linea=self.linea_3,
+            activo=True,
+        )
+        self.ana = crear_empleado(
+            numero_empleado="SG-0101",
+            nombre="Ana López",
+            rol=self.rol_operador,
+            linea=self.linea_3,
+            activo=True,
+        )
+        self.operador_otra_linea = crear_empleado(
+            numero_empleado="SG-0201",
+            nombre="Luis Otra Línea",
+            rol=self.rol_operador,
+            linea=self.linea_4,
+            activo=True,
+        )
+
+        sesion = self.client.session
+        sesion["empleado_id"] = self.jefe.id
+        sesion.save()
+
+        self.url = reverse("personal:matriz_competencias")
+
+    def test_sgpro23_valor_no_numerico_en_empleado_ignora_muestra_aviso_y_no_da_500(self):
+        respuesta = self.client.post(
+            self.url,
+            {
+                "guardar_asignacion": "1",
+                "turno": "1",
+                f"estacion_{self.corte.id}": "abc",
+                f"estacion_{self.soldadura.id}": str(self.ana.id),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        mensajes = [str(m) for m in respuesta.context["messages"]]
+        self.assertTrue(
+            any("Se ignoraron valores no válidos" in m for m in mensajes),
+            f"No se encontró el aviso esperado en mensajes: {mensajes}",
+        )
+        # La estación válida sí se guardó y la manipulada no rompió la sesión
+        self.assertEqual(Asignacion.objects.filter(estacion=self.soldadura, turno=1).count(), 1)
+        self.assertEqual(Asignacion.objects.filter(estacion=self.corte, turno=1).count(), 0)
+
+    def test_sgpro23_clave_estacion_no_numerica_y_otra_linea_se_ignoran_sin_500(self):
+        respuesta = self.client.post(
+            self.url,
+            {
+                "guardar_asignacion": "1",
+                "turno": "1",
+                "estacion_abc": str(self.ana.id),
+                f"estacion_{self.otra_estacion.id}": str(self.operador_otra_linea.id),
+                f"estacion_{self.corte.id}": str(self.operador_otra_linea.id),
+            },
+            follow=True,
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(Asignacion.objects.count(), 0)
+        mensajes = [str(m) for m in respuesta.context["messages"]]
+        self.assertTrue(
+            any("Se ignoraron valores no válidos" in m for m in mensajes),
+            f"No se encontró el aviso esperado en mensajes: {mensajes}",
+        )

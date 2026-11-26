@@ -217,26 +217,66 @@ def matriz_competencias(request):
     # turno 3 sigue siendo la guardia que arrancó ayer a las 22:00 (B-05).
     fecha = calidad_services.fecha_de_la_guardia(turno)
 
-    # 1. Procesar guardado de asignación (POST) validando pertenencia a la línea
+    # 1. Procesar guardado de asignación (POST) validando enteros y pertenencia a la línea (SGPRO-23)
     if request.method == "POST" and "guardar_asignacion" in request.POST:
-        estaciones_validas = {str(e.id) for e in estaciones}
-        empleados_validos = {str(emp.id) for emp in empleados}
+        estaciones_validas = {e.id for e in estaciones}
+        empleados_validos = {emp.id for emp in empleados}
         asignaciones_guardadas = {}
+        hubo_valores_invalidos = False
 
         for key, val in request.POST.items():
-            if key.startswith("estacion_"):
-                estacion_id = key.replace("estacion_", "")
-                if estacion_id in estaciones_validas:
-                    asignaciones_guardadas[estacion_id] = (
-                        val if (val and val in empleados_validos) else None
-                    )
+            if not key.startswith("estacion_"):
+                continue
+
+            raw_estacion_id = key.removeprefix("estacion_")
+            try:
+                estacion_id = int(raw_estacion_id)
+            except (TypeError, ValueError):
+                hubo_valores_invalidos = True
+                continue
+
+            if estacion_id not in estaciones_validas:
+                hubo_valores_invalidos = True
+                continue
+
+            val_limpio = (val or "").strip()
+            if not val_limpio:
+                asignaciones_guardadas[str(estacion_id)] = None
+                continue
+
+            try:
+                empleado_id = int(val_limpio)
+            except (TypeError, ValueError):
+                hubo_valores_invalidos = True
+                continue
+
+            if empleado_id not in empleados_validos:
+                hubo_valores_invalidos = True
+                continue
+
+            asignaciones_guardadas[str(estacion_id)] = str(empleado_id)
 
         manuales_raw = request.POST.get("estaciones_manuales", "")
-        estaciones_manuales = {
-            eid.strip()
-            for eid in manuales_raw.split(",")
-            if eid.strip() in estaciones_validas
-        }
+        estaciones_manuales = set()
+        for eid in manuales_raw.split(","):
+            eid_limpio = eid.strip()
+            if not eid_limpio:
+                continue
+            try:
+                eid_int = int(eid_limpio)
+            except (TypeError, ValueError):
+                hubo_valores_invalidos = True
+                continue
+            if eid_int in estaciones_validas:
+                estaciones_manuales.add(str(eid_int))
+            else:
+                hubo_valores_invalidos = True
+
+        if hubo_valores_invalidos:
+            messages.warning(
+                request,
+                "Se ignoraron valores no válidos o ajenos a la línea en el formulario.",
+            )
 
         _, guardadas, _, avisos = calidad_services.guardar_asignacion_vigente(
             linea_actual,
