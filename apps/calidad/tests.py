@@ -1,8 +1,11 @@
 import json
+from datetime import timedelta
 from unittest.mock import patch
 
+from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.personal.models import Empleado, Estacion, Linea, Rol
 
@@ -18,7 +21,6 @@ def crear_empleado(**datos):
         empleado.set_pin(pin)
         empleado.save(update_fields=["pin_hash"])
     return empleado
-
 
 
 class CatalogoDefectoRF22Tests(TestCase):
@@ -239,3 +241,116 @@ class CuerpoMalformadoTests(TestCase):
         self.assertEqual(respuesta.status_code, 400)
         self.assertIn("asignacion_id", respuesta.json()["error"])
         self.assertEqual(RegistroCalidadHorario.objects.count(), 0)
+
+
+class AsignacionUniqueConstraintTests(TestCase):
+    """SGPRO-42: valida UniqueConstraint(estacion, fecha, turno) a nivel de base de datos."""
+
+    def setUp(self):
+        self.rol_jefe = Rol.objects.create(nombre="Jefe de Línea", tipo_rol="jefe")
+        self.rol_operador = Rol.objects.create(nombre="Operador", tipo_rol="operador")
+
+        self.jefe = crear_empleado(
+            numero_empleado="SG-9201",
+            nombre="Jefe Constraint",
+            pin="123456",
+            rol=self.rol_jefe,
+            activo=True,
+        )
+        self.operador_1 = crear_empleado(
+            numero_empleado="SG-9202",
+            nombre="Operador Uno",
+            pin="123456",
+            rol=self.rol_operador,
+            activo=True,
+        )
+        self.operador_2 = crear_empleado(
+            numero_empleado="SG-9203",
+            nombre="Operador Dos",
+            pin="123456",
+            rol=self.rol_operador,
+            activo=True,
+        )
+
+        self.linea = Linea.objects.create(nombre="Línea Constraint", jefe_linea=self.jefe)
+        self.estacion_1 = Estacion.objects.create(
+            linea=self.linea, nombre="Estación 1", orden=1
+        )
+        self.estacion_2 = Estacion.objects.create(
+            linea=self.linea, nombre="Estación 2", orden=2
+        )
+        self.fecha = timezone.localdate()
+
+    def test_sgpro42_rechaza_duplicado_estacion_fecha_turno(self):
+        """Impide crear dos asignaciones para la misma estación, fecha y turno."""
+        Asignacion.objects.create(
+            empleado=self.operador_1,
+            estacion=self.estacion_1,
+            fecha=self.fecha,
+            turno=1,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Asignacion.objects.create(
+                    empleado=self.operador_2,
+                    estacion=self.estacion_1,
+                    fecha=self.fecha,
+                    turno=1,
+                )
+
+        self.assertEqual(Asignacion.objects.count(), 1)
+
+    def test_sgpro42_permite_misma_estacion_y_fecha_en_distinto_turno(self):
+        """Permite asignar la misma estación y fecha si el turno es diferente."""
+        Asignacion.objects.create(
+            empleado=self.operador_1,
+            estacion=self.estacion_1,
+            fecha=self.fecha,
+            turno=1,
+        )
+        otra = Asignacion.objects.create(
+            empleado=self.operador_2,
+            estacion=self.estacion_1,
+            fecha=self.fecha,
+            turno=2,
+        )
+
+        self.assertIsNotNone(otra.pk)
+        self.assertEqual(Asignacion.objects.count(), 2)
+
+    def test_sgpro42_permite_misma_estacion_y_turno_en_distinta_fecha(self):
+        """Permite asignar la misma estación y turno en una fecha diferente."""
+        Asignacion.objects.create(
+            empleado=self.operador_1,
+            estacion=self.estacion_1,
+            fecha=self.fecha,
+            turno=1,
+        )
+        otra = Asignacion.objects.create(
+            empleado=self.operador_1,
+            estacion=self.estacion_1,
+            fecha=self.fecha + timedelta(days=1),
+            turno=1,
+        )
+
+        self.assertIsNotNone(otra.pk)
+        self.assertEqual(Asignacion.objects.count(), 2)
+
+    def test_sgpro42_permite_misma_fecha_y_turno_en_distinta_estacion(self):
+        """Permite asignar en la misma fecha y turno siempre que sea en otra estación."""
+        Asignacion.objects.create(
+            empleado=self.operador_1,
+            estacion=self.estacion_1,
+            fecha=self.fecha,
+            turno=1,
+        )
+        otra = Asignacion.objects.create(
+            empleado=self.operador_2,
+            estacion=self.estacion_2,
+            fecha=self.fecha,
+            turno=1,
+        )
+
+        self.assertIsNotNone(otra.pk)
+        self.assertEqual(Asignacion.objects.count(), 2)
