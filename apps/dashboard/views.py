@@ -1,9 +1,11 @@
 from django.core.paginator import Paginator
+from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
 
 from apps.calidad import services as calidad_services
-from apps.personal.models import Empleado
+from apps.calidad.models import Asignacion, RegistroCalidadHorario
+from apps.personal.models import Empleado, SkillMatrix
 
 from .accesos import rol_requerido
 from .bonos import calcular_elegibles_bono
@@ -16,7 +18,100 @@ from .tablero import construir_tablero
 
 @rol_requerido('operador')
 def pantalla_operador(request):
-    return render(request, 'dashboard/operador.html')
+    empleado = request.empleado
+    hora = calidad_services.hora_actual()
+    turno_actual = calidad_services.turno_de_la_hora(hora)
+    fecha_actual = calidad_services.fecha_de_la_guardia(turno_actual)
+
+    # 1. Buscar asignación del turno en curso; si no hay (ej. demo fuera de turno 1),
+    # toma la asignación más reciente del operador para mostrar datos reales.
+    asignacion = (
+        Asignacion.objects.filter(
+            empleado=empleado,
+            fecha=fecha_actual,
+            turno=turno_actual,
+        )
+        .select_related('estacion', 'estacion__linea')
+        .first()
+    )
+    es_turno_vigente = asignacion is not None
+    if asignacion is None:
+        asignacion = (
+            Asignacion.objects.filter(empleado=empleado)
+            .select_related('estacion', 'estacion__linea')
+            .order_by('-fecha', '-turno', '-id')
+            .first()
+        )
+
+    nivel_habilidad = None
+    if asignacion is not None:
+        skill = SkillMatrix.objects.filter(
+            empleado=empleado,
+            estacion=asignacion.estacion,
+        ).first()
+        nivel_habilidad = skill.nivel if skill else 'Sin nivel'
+
+    # 2. Producción y calidad de esa asignación
+    produccion = {
+        'aceptadas': 0,
+        'rechazadas': 0,
+        'retrabajo': 0,
+        'total': 0,
+        'fpy': None,
+        'horas_registradas': 0,
+    }
+    if asignacion is not None:
+        registros = RegistroCalidadHorario.objects.filter(asignacion=asignacion)
+        agregados = registros.aggregate(
+            aceptadas=Sum('piezas_aceptadas'),
+            rechazadas=Sum('piezas_rechazadas'),
+            retrabajo=Sum('piezas_retrabajo'),
+        )
+        aceptadas = agregados['aceptadas'] or 0
+        rechazadas = agregados['rechazadas'] or 0
+        retrabajo = agregados['retrabajo'] or 0
+        total = aceptadas + rechazadas + retrabajo
+        fpy = round((aceptadas / total) * 100, 1) if total > 0 else None
+        produccion = {
+            'aceptadas': aceptadas,
+            'rechazadas': rechazadas,
+            'retrabajo': retrabajo,
+            'total': total,
+            'fpy': fpy,
+            'horas_registradas': registros.count(),
+        }
+
+    # 3. Elegibilidad al bono por cero defectos (US-15)
+    bono = calcular_elegibles_bono()
+    detalle_bono = next(
+        (item for item in bono['elegibles'] if item['empleado_id'] == empleado.id),
+        None,
+    )
+    agregados_periodo = RegistroCalidadHorario.objects.filter(
+        asignacion__empleado=empleado,
+        asignacion__fecha__range=(bono['periodo']['inicio'], bono['periodo']['fin']),
+    ).aggregate(
+        total_aceptadas=Sum('piezas_aceptadas'),
+        total_rechazos=Sum('piezas_rechazadas'),
+    )
+    aceptadas_periodo = agregados_periodo['total_aceptadas'] or 0
+    rechazos_periodo = agregados_periodo['total_rechazos'] or 0
+
+    return render(
+        request,
+        'dashboard/operador.html',
+        {
+            'empleado': empleado,
+            'asignacion': asignacion,
+            'es_turno_vigente': es_turno_vigente,
+            'nivel_habilidad': nivel_habilidad,
+            'produccion': produccion,
+            'bono': bono,
+            'detalle_bono': detalle_bono,
+            'aceptadas_periodo': aceptadas_periodo,
+            'rechazos_periodo': rechazos_periodo,
+        },
+    )
 
 
 @rol_requerido('jefe')

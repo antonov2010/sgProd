@@ -11,36 +11,87 @@
 <header class="sg-page-head">
   <div>
     <p class="sg-eyebrow">Operación · Estación</p>
-    <h1>Mi turno</h1>
-    <p>Consulta tu estación, tu producción y tu elegibilidad al bono.</p>
+    <h1>Hola, {{ empleado.nombre }} {{ empleado.apellido }}</h1>
+    <p>Número de empleado: <strong>{{ empleado.numero_empleado }}</strong> · Consulta tu estación, producción y elegibilidad al bono.</p>
   </div>
   <span class="sg-badge">Operador</span>
 </header>
 
 <section class="sg-role-grid" aria-label="Secciones del turno del operador">
+  <!-- TARJETA 1: MI ESTACIÓN -->
   <article class="sg-card sg-role-card">
-    <p class="sg-eyebrow">Hoy</p>
+    <p class="sg-eyebrow">{% if es_turno_vigente %}Turno actual{% else %}Último turno registrado{% endif %}</p>
     <h2>Mi estación</h2>
-    <p class="sg-muted">La estación y el turno que tienes asignados.</p>
-    <div class="sg-empty">Pendiente de conectar la asignación actual.</div>
+    {% if asignacion %}
+      <p class="sg-muted">{{ asignacion.estacion.linea.nombre }} · Turno {{ asignacion.turno }} ({{ asignacion.fecha }})</p>
+      <div style="margin-top: 12px;">
+        <p style="font-size: 1.25rem; font-weight: 700; margin: 0 0 6px 0;">
+          {{ asignacion.estacion.nombre }}
+        </p>
+        <p style="margin: 0 0 8px 0;">
+          Nivel registrado: <strong>{{ nivel_habilidad }}</strong>
+        </p>
+        {% if asignacion.alerta_supervision %}
+          <p class="sg-badge" style="background: #fff3cd; color: #856404;">
+            ⚠️ Estación con apoyo de supervisión
+          </p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="sg-empty">Aún no tienes una estación asignada en el sistema.</div>
+    {% endif %}
   </article>
 
+  <!-- TARJETA 2: MI PRODUCCIÓN -->
   <article class="sg-card sg-role-card">
     <p class="sg-eyebrow">Resultado</p>
     <h2>Mi producción</h2>
-    <p class="sg-muted">Piezas aceptadas, rechazadas y retrabajo del turno.</p>
-    <div class="sg-empty">Pendiente de conectar los registros de calidad.</div>
+    {% if asignacion and produccion.horas_registradas > 0 %}
+      <p class="sg-muted">Acumulado en {{ produccion.horas_registradas }} hora(s) capturada(s).</p>
+      <ul style="list-style: none; padding: 0; margin: 12px 0 0 0;">
+        <li style="margin-bottom: 6px;">✅ Aceptadas: <strong>{{ produccion.aceptadas }}</strong></li>
+        <li style="margin-bottom: 6px;">❌ Rechazadas: <strong>{{ produccion.rechazadas }}</strong></li>
+        <li style="margin-bottom: 6px;">🔄 Retrabajo: <strong>{{ produccion.retrabajo }}</strong></li>
+        {% if produccion.fpy is not None %}
+          <li style="margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line, #d3dbdd);">
+            FPY del turno: <strong>{{ produccion.fpy }} %</strong>
+          </li>
+        {% endif %}
+      </ul>
+    {% else %}
+      <div class="sg-empty">Todavía no hay capturas horarias registradas en este turno.</div>
+    {% endif %}
   </article>
 
+  <!-- TARJETA 3: MI BONO -->
   <article class="sg-card sg-role-card">
-    <p class="sg-eyebrow">Periodo</p>
+    <p class="sg-eyebrow">Periodo ({{ bono.periodo.inicio }} al {{ bono.periodo.fin }})</p>
     <h2>Mi bono</h2>
-    <p class="sg-muted">Tu avance hacia el bono por cero defectos.</p>
-    <div class="sg-empty">Pendiente de conectar el cálculo del bono.</div>
+    {% if detalle_bono %}
+      <p style="color: #1e8e4e; font-weight: 700; font-size: 1.1rem; margin: 8px 0;">
+        🏆 ¡Eres elegible al bono por cero defectos!
+      </p>
+      <p class="sg-muted">
+        Llevas <strong>{{ aceptadas_periodo }}</strong> piezas aceptadas y <strong>0</strong> rechazos en <strong>{{ detalle_bono.registros|length }}</strong> horas evaluadas.
+      </p>
+    {% else %}
+      <p style="color: #c8322b; font-weight: 700; margin: 8px 0;">
+        No elegible en el periodo actual
+      </p>
+      {% if rechazos_periodo > 0 %}
+        <p class="sg-muted">
+          Registras <strong>{{ rechazos_periodo }}</strong> pieza(s) rechazada(s) dentro de la ventana de evaluación.
+        </p>
+      {% else %}
+        <p class="sg-muted">
+          Aún no cuentas con registros de producción suficientes en el periodo evaluado.
+        </p>
+      {% endif %}
+    {% endif %}
   </article>
 </section>
 
 <footer class="sg-role-footer">
-  <span class="sg-muted sg-small">Vista base por rol. Tus datos se integrarán en una historia posterior.</span>
+  <span class="sg-muted sg-small">Datos actualizados en tiempo real desde las capturas de calidad de planta.</span>
 </footer>
 {% endblock %}
